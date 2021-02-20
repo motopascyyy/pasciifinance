@@ -1,8 +1,7 @@
-package com.pasciitools.pasciifinance;
+package com.pasciitools.pasciifinance.account;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
+import javax.persistence.*;
+import java.util.List;
 
 @Entity
 public class Account {
@@ -14,16 +13,20 @@ public class Account {
     private String institution; //WealthSimple, TD...
     private String institutionAccountId; //
     private String accountLabel;
+    private boolean jointAccount;
+    private boolean active;
+
+    @OneToMany(mappedBy = "account")
+    private List<AccountEntry> accountEntries;
 
     public boolean isActive() {
-        return isActive;
+        return active;
     }
 
     public void setActive(boolean active) {
-        isActive = active;
+        this.active = active;
     }
 
-    private boolean isActive;
 
     public Long getId() {
         return id;
@@ -69,5 +72,11 @@ public class Account {
         return String.format("%s %s", institution, accountLabel);
     }
 
+    public boolean isJointAccount() {
+        return jointAccount;
+    }
 
+    public void setJointAccount(boolean jointAccount) {
+        this.jointAccount = jointAccount;
+    }
 }

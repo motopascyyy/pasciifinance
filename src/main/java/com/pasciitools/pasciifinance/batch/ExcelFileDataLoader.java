@@ -1,9 +1,8 @@
 package com.pasciitools.pasciifinance.batch;
 
-import com.pasciitools.pasciifinance.Account;
-import com.pasciitools.pasciifinance.AccountEntry;
-import com.pasciitools.pasciifinance.AccountEntryRepository;
-import com.pasciitools.pasciifinance.AccountRepository;
+import com.pasciitools.pasciifinance.account.Account;
+import com.pasciitools.pasciifinance.account.AccountEntry;
+import com.pasciitools.pasciifinance.account.AccountRepository;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -11,7 +10,6 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.io.*;
 import java.util.*;
@@ -60,8 +58,14 @@ public class ExcelFileDataLoader {
                 else
                     acc.setActive(true);
 
+                if (acc.getAccountLabel().toLowerCase().contains("joint"))
+                    acc.setJointAccount(true);
+                else
+                    acc.setJointAccount(false);
+
+
                 accounts.add(acc);
-                log.info(acc.toString());
+                log.debug(acc.toString());
             }
         }
         return accounts;
@@ -74,16 +78,16 @@ public class ExcelFileDataLoader {
             Sheet sheet = iter.next();
             String sheetName = sheet.getSheetName();
             if (!sheetName.toLowerCase().contains("summary")) {
-                Long accountId = getAcctId(sheetName);
+                Account accountId = getAcctId(sheetName);
                 for (Row row : sheet) {
                     if (row.getRowNum() != 0) {
                         AccountEntry ae = new AccountEntry();
-                        ae.setAccountId(accountId);
+                        ae.setAccount(accountId);
                         Cell dateCell = row.getCell(0);
                         Cell bookValueCell = row.getCell(1);
                         Cell marketValueCell = row.getCell(2);
                         if (dateCell == null || dateCell.getDateCellValue() == null) {
-                            log.info(String.format("Exiting sheet %s at %o", sheetName, row.getRowNum()));
+                            log.debug(String.format("Exiting sheet %s at %o", sheetName, row.getRowNum()));
                             break;
                         }
                         Date entryDate = dateCell.getDateCellValue();
@@ -109,11 +113,11 @@ public class ExcelFileDataLoader {
         return sheetName.substring((inst.length())).trim();
     }
 
-    private Long getAcctId (String sheetName) {
+    private Account getAcctId (String sheetName) {
         String acctLabel = getAcctLabelFromSheetName(sheetName);
         String inst = getInstitutionFromSheetName(sheetName);
         Account act = acctRepo.findByInstitutionAndAccountLabel(inst, acctLabel);
-        return act.getId();
+        return act;
     }
 
     public void closeAll () {
