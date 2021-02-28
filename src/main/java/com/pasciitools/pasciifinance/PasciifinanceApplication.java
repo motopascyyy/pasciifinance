@@ -41,8 +41,17 @@ public class PasciifinanceApplication {
 	@Bean
 	public CommandLineRunner processAccounts() {
 		return (args) -> {
-			if (args.length > 0 && !args[0].equals("-skipLoad")) {
-				System.out.println(args[0]);
+			boolean seedDB = false;
+			if (args.length > 0 ) {
+				for (String arg : args) {
+					if (arg.equals("-seedDB")) {
+						seedDB = true;
+						break;
+					}
+				}
+			}
+			if (seedDB) {
+				log.debug("Seeding DB with data from: " + pathToInitLoaderFile);
 				ExcelFileDataLoader loader = new ExcelFileDataLoader(pathToInitLoaderFile, accountRepo);
 
 				List<Account> accounts = loader.parseForAccounts();

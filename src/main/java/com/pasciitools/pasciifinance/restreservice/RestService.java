@@ -29,38 +29,41 @@ public class RestService {
     public String getCurrentValue() {
         String result = "$0";
         List<AccountEntry> latestEntries = entryRepo.getLatestResults(new Date());
-        Date latestMaxDate = latestEntries.get(0).getEntryDate();
-        java.util.Calendar cal = GregorianCalendar.getInstance();
-        cal.setTime( latestMaxDate );
-        cal.add(GregorianCalendar.DAY_OF_YEAR, -1);
-        List<AccountEntry> previousEntries = entryRepo.getLatestResults(cal.getTime());
-        List<Long> accountIds = new ArrayList<>();
+        if (latestEntries != null && latestEntries.size() > 0) {
+            Date latestMaxDate = latestEntries.get(0).getEntryDate();
+            java.util.Calendar cal = GregorianCalendar.getInstance();
+            cal.setTime(latestMaxDate);
+            cal.add(GregorianCalendar.DAY_OF_YEAR, -1);
+            List<AccountEntry> previousEntries = entryRepo.getLatestResults(cal.getTime());
+            List<Long> accountIds = new ArrayList<>();
 
 
-        BigDecimal previousBalance = new BigDecimal(0);
-        for (AccountEntry entry : previousEntries) {
-            if (entry.getAccount().isJointAccount()){
-                previousBalance = previousBalance.add(entry.getMarketValue().divide(BigDecimal.valueOf(2),RoundingMode.HALF_UP));
-            } else {
-                previousBalance = previousBalance.add(entry.getMarketValue());
+            BigDecimal previousBalance = new BigDecimal(0);
+            for (AccountEntry entry : previousEntries) {
+                if (entry.getAccount().isJointAccount()) {
+                    previousBalance = previousBalance.add(entry.getMarketValue().divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP));
+                } else {
+                    previousBalance = previousBalance.add(entry.getMarketValue());
+                }
             }
-        }
 
-        BigDecimal currentBalance = new BigDecimal(0);
-        for (AccountEntry entry : latestEntries) {
-            if (entry.getAccount().isJointAccount()){
-                currentBalance = currentBalance.add(entry.getMarketValue().divide(BigDecimal.valueOf(2),RoundingMode.HALF_UP));
-            } else {
-                currentBalance = currentBalance.add(entry.getMarketValue());
+            BigDecimal currentBalance = new BigDecimal(0);
+            for (AccountEntry entry : latestEntries) {
+                if (entry.getAccount().isJointAccount()) {
+                    currentBalance = currentBalance.add(entry.getMarketValue().divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP));
+                } else {
+                    currentBalance = currentBalance.add(entry.getMarketValue());
+                }
             }
-        }
 
-        if (currentBalance.doubleValue() > previousBalance.doubleValue()) {
-            result = currentBalance.doubleValue() != 0.0 ? String.format("%s up from %s", getFormattedAsCurrency(currentBalance), getFormattedAsCurrency(previousBalance)) : result;
+            if (currentBalance.doubleValue() > previousBalance.doubleValue()) {
+                result = currentBalance.doubleValue() != 0.0 ? String.format("%s up from %s", getFormattedAsCurrency(currentBalance), getFormattedAsCurrency(previousBalance)) : result;
+            } else
+                result = currentBalance.doubleValue() != 0.0 ? String.format("%s down from %s", getFormattedAsCurrency(currentBalance), getFormattedAsCurrency(previousBalance)) : result;
+            return result;
+        } else {
+            return "No results retrieved. Apparently you're broke!";
         }
-        else
-            result = currentBalance.doubleValue() != 0.0 ? String.format("%s down from %s", getFormattedAsCurrency(currentBalance), getFormattedAsCurrency(previousBalance)) : result;
-        return result;
     }
 
     private String getFormattedAsCurrency(BigDecimal dec) {
