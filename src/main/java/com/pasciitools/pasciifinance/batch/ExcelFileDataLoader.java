@@ -27,7 +27,7 @@ public class ExcelFileDataLoader {
     public ExcelFileDataLoader(String pathToInitLoaderFile, AccountRepository repo) {
         this.pathToFile = pathToInitLoaderFile;
         try {
-            fis = new FileInputStream(new File(pathToFile));
+            fis = new FileInputStream(pathToFile);
             acctRepo = repo;
             workbook = new XSSFWorkbook(fis);
         } catch (FileNotFoundException e) {
@@ -38,7 +38,7 @@ public class ExcelFileDataLoader {
     }
 
     public List<Account> parseForAccounts() {
-        List<Account> accounts = new ArrayList<Account>();
+        List<Account> accounts = new ArrayList<>();
         for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
             Account acc = new Account();
             String sheetName = workbook.getSheetName(i).trim();
@@ -72,7 +72,7 @@ public class ExcelFileDataLoader {
     }
 
     public List<AccountEntry> parseForEntries() {
-        List<AccountEntry> entries = new ArrayList<AccountEntry>();
+        List<AccountEntry> entries = new ArrayList<>();
         Iterator<Sheet> iter = workbook.sheetIterator();
         while (iter.hasNext()) {
             Sheet sheet = iter.next();
@@ -116,8 +116,7 @@ public class ExcelFileDataLoader {
     private Account getAcctId (String sheetName) {
         String acctLabel = getAcctLabelFromSheetName(sheetName);
         String inst = getInstitutionFromSheetName(sheetName);
-        Account act = acctRepo.findByInstitutionAndAccountLabel(inst, acctLabel);
-        return act;
+        return acctRepo.findByInstitutionAndAccountLabel(inst, acctLabel);
     }
 
     public void closeAll () {

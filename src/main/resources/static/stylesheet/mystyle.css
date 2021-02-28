@@ -4,15 +4,27 @@ body {
 
 #form_entry_area {
     display: table;
-    margin: 5px auto 5px auto;
-    border-spacing: 0;
+    margin: 150px auto 5px auto;
+    width: 800px;
+    border-spacing: 0 5px;
 }
 
-.entry_label  {
-    display: inline-block;
+.entry_container {
+    display: table-cell;
+    width: 33%;
+}
+
+input {
+    -moz-appearance: textfield;
+    -webkit-appearance: textfield;
+}
+
+.entry_label, .mv_input, .bv_input  {
+
     padding: 8px 5px 8px 5px;
     margin: 5px;
-    width: 250px;
+    width: 90%;
+    box-sizing: border-box;
 }
 
 .button {
@@ -28,26 +40,19 @@ body {
 }
 
 #button_banner {
-    display: table;
-    margin: 0 auto
-}
-
-.bv_input  {
-    display: table-cell;
-    width: 250px;
-    padding: 8px 5px 8px 5px;
-    margin: 5px;
+    /*! margin: 0 auto; */
+    text-align: center;
+    position: fixed;
+    left: auto;
+    right: auto;
+    top: 0;
+    background-color: white;
+    width: 100%;
+    padding: 0 0 10px 0;
 }
 
 #balance_header {
     text-align: center;
-}
-
-.mv_input  {
-    display: table-cell;
-    width: 250px;
-    padding: 8px 5px 8px 5px;
-    margin: 5px;
 }
 
 .account_entry_item {
@@ -64,4 +69,34 @@ body {
 
 .account_entry_item:hover {
     background-color: cadetblue;
+}
+
+
+@media only screen and (max-width: 810px) {
+    #form_entry_area {
+        display: table;
+        border-spacing: 0 5px;
+        width: 100%;
+    }
+}
+
+@media only screen and (max-width: 500px) {
+    h1 {
+        text-align: center;
+    }
+
+    .entry_label, .bv_input, .mv_input {
+        display: block;
+        width: 98%;
+    }
+
+    .entry_container {
+    display: block;
+        width: 100%;
+    }
+
+    #form_entry_area {
+        width:100%;
+    }
+
 }

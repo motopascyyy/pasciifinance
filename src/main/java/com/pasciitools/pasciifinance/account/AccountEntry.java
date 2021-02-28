@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.util.Date;
 
 @Entity
+@Table(uniqueConstraints={@UniqueConstraint(columnNames={"entryDate", "ACCOUNT_ID"})})
 public class AccountEntry {
 
     @Id

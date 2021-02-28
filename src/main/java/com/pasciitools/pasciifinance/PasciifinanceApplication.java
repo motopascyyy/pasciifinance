@@ -5,6 +5,7 @@ import com.pasciitools.pasciifinance.account.AccountEntry;
 import com.pasciitools.pasciifinance.account.AccountEntryRepository;
 import com.pasciitools.pasciifinance.account.AccountRepository;
 import com.pasciitools.pasciifinance.batch.ExcelFileDataLoader;
+import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,17 +26,10 @@ public class PasciifinanceApplication {
 	private String pathToInitLoaderFile;
 
 	@Autowired
-	private ConfigurableEnvironment env;
-
-	@Autowired
 	private AccountRepository accountRepo;
 
 	@Autowired
 	private AccountEntryRepository entryRepo;
-
-
-//	@Value("${spring.datasource.username}")
-//	private String username;
 
 	private static final Logger log = LoggerFactory.getLogger(PasciifinanceApplication.class);
 
@@ -47,22 +41,29 @@ public class PasciifinanceApplication {
 	@Bean
 	public CommandLineRunner processAccounts() {
 		return (args) -> {
+			if (args.length > 0 && !args[0].equals("-skipLoad")) {
+				System.out.println(args[0]);
+				ExcelFileDataLoader loader = new ExcelFileDataLoader(pathToInitLoaderFile, accountRepo);
 
-			ExcelFileDataLoader loader = new ExcelFileDataLoader(pathToInitLoaderFile, accountRepo);
-
-			List<Account> accounts = loader.parseForAccounts();
-			accountRepo.saveAll(accounts);
-			List<AccountEntry> entries = loader.parseForEntries();
-//			entryRepo.saveAll(entries);
-			for (AccountEntry entry : entries) {
+				List<Account> accounts = loader.parseForAccounts();
 				try {
-					entryRepo.save(entry);
+					accountRepo.saveAll(accounts);
 				} catch (Exception e) {
-					log.error("Couldn't save account entry: " + entry.toString(), e);
+					log.error("Couldn't new accounts because of a key constraint: " + e.getMessage(), e);
 				}
+				List<AccountEntry> entries = loader.parseForEntries();
+//			entryRepo.saveAll(entries);
+				for (AccountEntry entry : entries) {
+					try {
+						entryRepo.save(entry);
+					} catch (Exception e) {
+						log.error("Couldn't save account entry: " + entry.toString(), e);
+					}
+				}
+				loader.closeAll();
+				log.info("All Data Loaded. Ready to handle requests.");
 			}
-			loader.closeAll();
-			log.info("All Data Loaded. Ready to handle requests.");
+			log.info("Ready to process requests");
 		};
 	}
 

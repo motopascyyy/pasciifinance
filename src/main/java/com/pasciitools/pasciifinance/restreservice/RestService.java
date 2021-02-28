@@ -26,7 +26,7 @@ public class RestService {
     private AccountRepository accountRepo;
 
     @GetMapping("/currentValue")
-    public String getCurrentValue() throws Exception{
+    public String getCurrentValue() {
         String result = "$0";
         List<AccountEntry> latestEntries = entryRepo.getLatestResults(new Date());
         Date latestMaxDate = latestEntries.get(0).getEntryDate();
@@ -40,7 +40,7 @@ public class RestService {
         BigDecimal previousBalance = new BigDecimal(0);
         for (AccountEntry entry : previousEntries) {
             if (entry.getAccount().isJointAccount()){
-                previousBalance = previousBalance.add(entry.getMarketValue().divide(BigDecimal.valueOf(2)));
+                previousBalance = previousBalance.add(entry.getMarketValue().divide(BigDecimal.valueOf(2),RoundingMode.HALF_UP));
             } else {
                 previousBalance = previousBalance.add(entry.getMarketValue());
             }
@@ -49,7 +49,7 @@ public class RestService {
         BigDecimal currentBalance = new BigDecimal(0);
         for (AccountEntry entry : latestEntries) {
             if (entry.getAccount().isJointAccount()){
-                currentBalance = currentBalance.add(entry.getMarketValue().divide(BigDecimal.valueOf(2)));
+                currentBalance = currentBalance.add(entry.getMarketValue().divide(BigDecimal.valueOf(2),RoundingMode.HALF_UP));
             } else {
                 currentBalance = currentBalance.add(entry.getMarketValue());
             }
@@ -87,8 +87,7 @@ public class RestService {
     @GetMapping("/latest")
     public AccountEntry getMaxEntry () {
         try {
-            AccountEntry latest = entryRepo.findTopByOrderByEntryDateDesc();
-            return latest;
+            return entryRepo.findTopByOrderByEntryDateDesc();
         } catch (Exception e) {
             log.error("Couldn't find latest entry due to: " + e.getMessage(), e);
             return null;
@@ -102,8 +101,8 @@ public class RestService {
 
     @PostMapping("/entries")
     public List<AccountEntry> newEntries (@RequestBody List<AccountEntry> entries) {
-        Iterable iterable = entryRepo.saveAll(entries);
-        Iterator iter = iterable.iterator();
+        Iterable<AccountEntry> iterable = entryRepo.saveAll(entries);
+        Iterator<AccountEntry> iter = iterable.iterator();
         List<AccountEntry> entriesSaved = new ArrayList<>();
         while (iter.hasNext()) {
             entriesSaved.add((AccountEntry) iter.next());
@@ -111,7 +110,7 @@ public class RestService {
         if (entriesSaved.size() != entries.size()) {
             log.error("Not all entries submitted were saved. Please investigate:\n\t Submitted:\n" + entries + "\n\nSaved:\n" + entriesSaved);
         } else {
-            log.debug("All entries submitted were saved.");
+            log.debug(String.format("All %s entries submitted were saved.", entriesSaved.size()));
         }
 
         return entriesSaved;
