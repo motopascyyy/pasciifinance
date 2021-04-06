@@ -1,3 +1,4 @@
 rootProject.name = 'pasciifinance'
 include 'common'
 include 'rest'
+include 'batch'
