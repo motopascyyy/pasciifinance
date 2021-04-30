@@ -5,6 +5,7 @@ import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.repository.AccountEntryRepository;
 import com.pasciitools.pasciifinance.common.repository.AccountRepository;
+import com.pasciitools.pasciifinance.common.service.AccountService;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
@@ -42,6 +43,10 @@ public class ExcelSeedBatchConfiguration {
     @Autowired
     private AccountRepository accRepo;
 
+    @Autowired
+    private AccountService accountService;
+
+
     /**
      * First block of readers, writers and processors to handle the accounts. This is require
      * before we handle the individual entries in each account
@@ -49,7 +54,7 @@ public class ExcelSeedBatchConfiguration {
 
     @Bean
     public AccountItemReader accountReader() {
-        return new AccountItemReader(pathToInitLoaderFile);
+        return new AccountItemReader(pathToInitLoaderFile, accountService);
     }
 
     @Bean
@@ -65,7 +70,7 @@ public class ExcelSeedBatchConfiguration {
 
     @Bean
     public AccountEntryItemReader entryReader() {
-        return new AccountEntryItemReader(pathToInitLoaderFile);
+        return new AccountEntryItemReader(pathToInitLoaderFile, accountService);
     }
 
     @Bean

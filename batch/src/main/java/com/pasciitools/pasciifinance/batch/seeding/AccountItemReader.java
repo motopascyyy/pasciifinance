@@ -24,7 +24,6 @@ import java.util.List;
 
 public class AccountItemReader implements ItemReader<Account> {
 
-    @Autowired
     private AccountService accountService;
 
     private static final Logger log = LoggerFactory.getLogger(AccountItemReader.class);
@@ -35,8 +34,9 @@ public class AccountItemReader implements ItemReader<Account> {
         return null;
     }
 
-    public AccountItemReader (String pathToFile) {
+    public AccountItemReader (String pathToFile, AccountService accountService) {
         try (Workbook workbook = new XSSFWorkbook(new FileInputStream(pathToFile))){
+            this.accountService = accountService;
             accounts = createAccountList(workbook);
         } catch (FileNotFoundException e) {
             log.error(String.format("Couldn't find the file: %s%nbecause of: %s", pathToFile, e.getMessage()), e);

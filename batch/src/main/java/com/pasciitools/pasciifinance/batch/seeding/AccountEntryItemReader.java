@@ -24,7 +24,6 @@ import java.util.*;
 
 public class AccountEntryItemReader implements ItemReader<AccountEntry> {
 
-    @Autowired
     private AccountService accountService;
 
     private static final Logger log = LoggerFactory.getLogger(AccountEntryItemReader.class);
@@ -32,15 +31,16 @@ public class AccountEntryItemReader implements ItemReader<AccountEntry> {
     private List<AccountEntry> entries;
     private int entryIndex = 0;
 
-    public AccountEntryItemReader (String pathToFile) {
+    public AccountEntryItemReader (String pathToFile, AccountService accountService) {
         try (Workbook workbook = new XSSFWorkbook(new FileInputStream(pathToFile))){
+            this.accountService = accountService;
             entries = new ArrayList<>();
             Iterator<Sheet> iter = workbook.sheetIterator();
             while (iter.hasNext()) {
                 Sheet sheet = iter.next();
                 String sheetName = sheet.getSheetName();
                 if (!"summary".equals(sheetName.toLowerCase())){
-                    var accountEntries = createAccountEntryList(sheet, sheetName);
+                    var accountEntries = createAccountEntryList(sheet);
                     entries.addAll(accountEntries);
                 }
             }
@@ -51,7 +51,7 @@ public class AccountEntryItemReader implements ItemReader<AccountEntry> {
         }
     }
 
-    private List<AccountEntry> createAccountEntryList (Sheet sheet, String targetSheetName){
+    private List<AccountEntry> createAccountEntryList (Sheet sheet){
         List<AccountEntry> accountEntries = new ArrayList<>();
         String sheetName = sheet.getSheetName();
         Account account = accountService.getAccountFromSheetName(sheetName);

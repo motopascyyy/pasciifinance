@@ -5,6 +5,9 @@ import com.pasciitools.pasciifinance.common.repository.AccountRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Iterator;
+import java.util.List;
+
 @Service
 public class AccountService {
     @Autowired
@@ -28,5 +31,16 @@ public class AccountService {
     public String getAcctLabelFromSheetName (String sheetName) {
         String inst = getInstitutionFromSheetName(sheetName);
         return sheetName.substring((inst.length())).trim();
+    }
+
+    public int getNumberOfAccounts() {
+        Iterable<Account> accountsIterable = acctRepo.findAll();
+        Iterator<Account> accountsIter = accountsIterable.iterator();
+        int counter = 0;
+        while (accountsIter.hasNext()) {
+            accountsIter.next();
+            counter++;
+        }
+        return counter;
     }
 }

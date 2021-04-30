@@ -2,12 +2,16 @@ package com.pasciitools.pasciifinance.batch;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
-@SpringBootApplication
+//@EnableEncryptableProperties
+@EntityScan(basePackages = "com.pasciitools.pasciifinance")
+@SpringBootApplication(scanBasePackages = "com.pasciitools.pasciifinance.*")
 public class BatchProcessingApplication {
 
     public static void main(String[] args) {
-        System.exit(SpringApplication.exit(SpringApplication.run(BatchProcessingApplication.class, args)));
+        SpringApplication.run(BatchProcessingApplication.class, args);
     }
 
 }
