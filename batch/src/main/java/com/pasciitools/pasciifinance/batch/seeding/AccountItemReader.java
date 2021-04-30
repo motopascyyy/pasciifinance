@@ -29,9 +29,18 @@ public class AccountItemReader implements ItemReader<Account> {
     private static final Logger log = LoggerFactory.getLogger(AccountItemReader.class);
 
     private List<Account> accounts;
+    private int entryIndex;
+
     @Override
     public Account read() throws Exception, UnexpectedInputException, ParseException, NonTransientResourceException {
-        return null;
+        Account nextEntry = null;
+        if (entryIndex < accounts.size()){
+            nextEntry = accounts.get(entryIndex);
+            entryIndex++;
+        } else {
+            entryIndex = 0;
+        }
+        return nextEntry;
     }
 
     public AccountItemReader (String pathToFile, AccountService accountService) {

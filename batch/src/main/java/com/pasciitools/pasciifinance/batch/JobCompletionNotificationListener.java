@@ -1,5 +1,6 @@
 package com.pasciitools.pasciifinance.batch;
 
+import com.pasciitools.pasciifinance.common.service.AccountEntryService;
 import com.pasciitools.pasciifinance.common.service.AccountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,18 +15,21 @@ public class JobCompletionNotificationListener extends JobExecutionListenerSuppo
     private static final Logger log = LoggerFactory.getLogger(JobCompletionNotificationListener.class);
 
     private AccountService accountService;
+    private AccountEntryService entryService;
 
     @Autowired
-    public JobCompletionNotificationListener (AccountService accountService) {
+    public JobCompletionNotificationListener (AccountService accountService, AccountEntryService entryService) {
         this.accountService = accountService;
+        this.entryService = entryService;
     }
 
     @Override
     public void afterJob(JobExecution jobExecution) {
         if(jobExecution.getStatus() == BatchStatus.COMPLETED) {
             log.info("!!! JOB FINISHED! Time to verify the results");
-            int totalNumberOfAccounts = accountService.getNumberOfAccounts();
-            log.info(String.format("Verified that %s accounts were inserted into the DB.", totalNumberOfAccounts));
+            log.info(String.format("%s accounts found in the DB.", accountService.getTotalNumberOfAccounts()));
+            log.info(String.format("%s account entries found in the DB.", entryService.getTotalNumberOfEntries()));
+
         }
     }
 }

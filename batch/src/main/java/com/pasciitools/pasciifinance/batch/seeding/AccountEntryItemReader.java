@@ -44,6 +44,7 @@ public class AccountEntryItemReader implements ItemReader<AccountEntry> {
                     entries.addAll(accountEntries);
                 }
             }
+            log.info(String.format("%s account entries read from file. Validate that many records are saved.", entries.size()));
         } catch (FileNotFoundException e) {
             log.error(String.format("Couldn't find the file: %s%nbecause of: %s", pathToFile, e.getMessage()), e);
         } catch (IOException e) {

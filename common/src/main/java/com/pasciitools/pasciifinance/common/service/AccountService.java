@@ -33,14 +33,7 @@ public class AccountService {
         return sheetName.substring((inst.length())).trim();
     }
 
-    public int getNumberOfAccounts() {
-        Iterable<Account> accountsIterable = acctRepo.findAll();
-        Iterator<Account> accountsIter = accountsIterable.iterator();
-        int counter = 0;
-        while (accountsIter.hasNext()) {
-            accountsIter.next();
-            counter++;
-        }
-        return counter;
+    public int getTotalNumberOfAccounts() {
+        return (int) acctRepo.count();
     }
 }

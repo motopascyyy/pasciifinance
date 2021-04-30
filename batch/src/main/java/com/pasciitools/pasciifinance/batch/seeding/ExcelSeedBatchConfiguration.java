@@ -5,6 +5,7 @@ import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.repository.AccountEntryRepository;
 import com.pasciitools.pasciifinance.common.repository.AccountRepository;
+import com.pasciitools.pasciifinance.common.service.AccountEntryService;
 import com.pasciitools.pasciifinance.common.service.AccountService;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -45,6 +46,8 @@ public class ExcelSeedBatchConfiguration {
 
     @Autowired
     private AccountService accountService;
+    @Autowired
+    private AccountEntryService entryService;
 
 
     /**
