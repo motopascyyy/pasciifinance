@@ -10,7 +10,7 @@ import java.util.List;
 
 /*
  * Note, this annotation isn't strictly necessary for the app to work, but IntelliJ doesn't detect a successful autowiring
- * Configuration class in the `batch` module.
+ * Configuration class in the `com.pasciitools.pasciifinance.batch` module.
  */
 @Repository
 public interface AccountEntryRepository extends CrudRepository<AccountEntry, Long> {

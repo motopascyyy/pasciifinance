@@ -17,6 +17,16 @@ public class AccountEntry {
 
     private BigDecimal marketValue;
 
+    private BigDecimal canadianEqtPct;
+    private BigDecimal usEqtPct;
+    private BigDecimal internationalEqtPct;
+    private BigDecimal emergingMktsEqtPct;
+    private BigDecimal cadFixedIncomePct;
+    private BigDecimal globalFixedIncomePct;
+    private BigDecimal cashPct;
+    private BigDecimal otherPct;
+
+
     @ManyToOne(fetch=FetchType.EAGER)
     @JoinColumn(name = "ACCOUNT_ID")
     private Account account;
@@ -41,6 +51,7 @@ public class AccountEntry {
         return marketValue;
     }
 
+
     public void setMarketValue(double marketValue) {
         this.marketValue = BigDecimal.valueOf(marketValue);
     }
@@ -62,5 +73,69 @@ public class AccountEntry {
 
     public void setAccount(Account account) {
         this.account = account;
+    }
+
+    public BigDecimal getCanadianEqtPct() {
+        return canadianEqtPct;
+    }
+
+    public void setCanadianEqtPct(BigDecimal canadianEqtPct) {
+        this.canadianEqtPct = canadianEqtPct;
+    }
+
+    public BigDecimal getUsEqtPct() {
+        return usEqtPct;
+    }
+
+    public void setUsEqtPct(BigDecimal usEqtPct) {
+        this.usEqtPct = usEqtPct;
+    }
+
+    public BigDecimal getInternationalEqtPct() {
+        return internationalEqtPct;
+    }
+
+    public void setInternationalEqtPct(BigDecimal internationalEqtPct) {
+        this.internationalEqtPct = internationalEqtPct;
+    }
+
+    public BigDecimal getEmergingMktsEqtPct() {
+        return emergingMktsEqtPct;
+    }
+
+    public void setEmergingMktsEqtPct(BigDecimal emergingMktsEqtPct) {
+        this.emergingMktsEqtPct = emergingMktsEqtPct;
+    }
+
+    public BigDecimal getCadFixedIncomePct() {
+        return cadFixedIncomePct;
+    }
+
+    public void setCadFixedIncomePct(BigDecimal cadFixedIncomePct) {
+        this.cadFixedIncomePct = cadFixedIncomePct;
+    }
+
+    public BigDecimal getGlobalFixedIncomePct() {
+        return globalFixedIncomePct;
+    }
+
+    public void setGlobalFixedIncomePct(BigDecimal globalFixedIncomePct) {
+        this.globalFixedIncomePct = globalFixedIncomePct;
+    }
+
+    public BigDecimal getCashPct() {
+        return cashPct;
+    }
+
+    public void setCashPct(BigDecimal cashPct) {
+        this.cashPct = cashPct;
+    }
+
+    public BigDecimal getOtherPct() {
+        return otherPct;
+    }
+
+    public void setOtherPct(BigDecimal otherPct) {
+        this.otherPct = otherPct;
     }
 }

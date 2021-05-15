@@ -5,17 +5,26 @@ import com.pasciitools.pasciifinance.common.repository.AccountRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Iterator;
-import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class AccountService {
     @Autowired
     private AccountRepository acctRepo;
 
+    private Map<String, Account> accountByInstitutionCache;
+
     public Account getAccount(String institutionName, String accountName) {
-        //TODO add some caching logic here for better performance
-        return acctRepo.findByInstitutionAndAccountLabel(institutionName, accountName);
+        String key = institutionName + "_" + accountName;
+        if (accountByInstitutionCache == null)
+            accountByInstitutionCache = new ConcurrentHashMap<>();
+        Account result = accountByInstitutionCache.get(key);
+        if (result == null) {
+            result = acctRepo.findByInstitutionAndAccountLabel(institutionName, accountName);
+            accountByInstitutionCache.put(key, result);
+        }
+        return result;
     }
 
     public Account getAccountFromSheetName(String sheetName) {
@@ -35,5 +44,13 @@ public class AccountService {
 
     public int getTotalNumberOfAccounts() {
         return (int) acctRepo.count();
+    }
+
+    public Account getAccountFromAccountNumber(String text) {
+        return acctRepo.findByInstitutionAccountId(text);
+    }
+
+    public AccountRepository getAcctRepo() {
+        return acctRepo;
     }
 }
