@@ -49,54 +49,69 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
     private int entryIndex = 0;
 
     @Override
-    public AccountEntry read() throws Exception, UnexpectedInputException, ParseException, NonTransientResourceException {
+    public AccountEntry read() throws UnexpectedInputException, ParseException, NonTransientResourceException {
+
+        if (driver == null) {
+            log.info("Collecting all the data from WebBroker. This part will take a while. Subsequent steps will be much faster.");
+            try {
+                driver = getDriver();
+                loginDriver();
+                wait = new WebDriverWait(driver, 10);
+                WebElement dropDownCarret = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className(CARRET)));
+                log.info("Login successful. Proceeding to data collection.");
+                click(dropDownCarret);
+
+                WebElement divOfAccounts = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("td-wb-dropdown__panel")));
+                List<WebElement> accountDivs = divOfAccounts.findElements(By.xpath(CHILDREN_XPATH_ONE_DOWN));
+                entries = collectData(accountDivs);
+            } catch (MalformedURLException e) {
+                String message = "URL was malformed. Could not establish connection. " +
+                        "Throwing RuntimeException to kill the process.";
+                log.error(message, e);
+                if (driver != null) {
+                    driver.quit();
+                }
+                throw new NonTransientResourceException(message, e);
+            } catch (InterruptedException e) {
+                String message = "Thread interrupted during execution. " +
+                        "Throwing RuntimeException to kill the process.";
+                log.error(message, e);
+                if (driver != null) {
+                    driver.quit();
+                }
+                throw new NonTransientResourceException(message, e);
+            }
+        }
+
         AccountEntry nextEntry = null;
         if (entryIndex < entries.size()){
             nextEntry = entries.get(entryIndex);
             entryIndex++;
         } else {
             entryIndex = 0;
+            if (driver != null) {
+                driver.quit();
+            }
+            driver = null;
         }
         return nextEntry;
     }
 
     public TDWebBrokerItemReader(String userName, String password, AccountService accountService, String url) {
-        try {
-            driver = getDriver();
-            if (userName == null || password == null)
-                throw new RuntimeException("Credentials not provided. Crashing execution");
-            this.userName = userName;
-            this.password = password;
-            this.accountService = accountService;
-            this.webBrokerURL = url;
-            loginDriver();
-            wait = new WebDriverWait(driver, 10);
-            WebElement dropDownCarret = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className(CARRET)));
-            click(dropDownCarret);
 
-            WebElement divOfAccounts = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("td-wb-dropdown__panel")));
-            List<WebElement> accountDivs = divOfAccounts.findElements(By.xpath(CHILDREN_XPATH_ONE_DOWN));
-            entries = collectData(accountDivs);
-        } catch (MalformedURLException e) {
-            String message = "URL was malformed. Could not establish connection. " +
-                    "Throwing RuntimeException to kill the process.";
-            log.error(message, e);
-            throw new RuntimeException(message, e);
-        } catch (InterruptedException e) {
-            String message = "Thread interrupted during execution. " +
-                    "Throwing RuntimeException to kill the process.";
-            log.error(message, e);
-            throw new RuntimeException(message, e);
-        } finally {
-            if (driver != null) {
-                driver.quit();
-            }
-        }
+        this.userName = userName;
+        this.password = password;
+        this.accountService = accountService;
+        this.webBrokerURL = url;
+        if (userName == null || password == null)
+            throw new RuntimeException("Credentials not provided. Crashing execution");
+
     }
 
     private List<AccountEntry> collectData (List<WebElement> accountDivs) throws InterruptedException {
         List<AccountEntry> entries= new ArrayList<>();
         var zero = new BigDecimal(0);
+        Date currentDate = new Date();
         for (int i = 0; i < accountDivs.size(); i++) {
             if (i != 0)
                 click(driver.findElement(By.className(CARRET)));
@@ -125,6 +140,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
                 accountEntry.setBookValue(0);
                 accountEntry.setMarketValue(0);
             }
+            accountEntry.setEntryDate(currentDate);
             entries.add(accountEntry);
         }
         log.info("Finished parsing for all Web Broker details");

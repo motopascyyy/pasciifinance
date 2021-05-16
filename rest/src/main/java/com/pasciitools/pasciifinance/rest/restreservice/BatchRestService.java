@@ -36,7 +36,7 @@ public class BatchRestService {
     public String invokeWebBrokerScraper() throws Exception {
         JobParameters jobParameters = new JobParametersBuilder().addLong("time", System.currentTimeMillis())
                 .toJobParameters();
-        jobLauncher.run(importEntriesFromExcelJob, jobParameters);
+        jobLauncher.run(loadWebBrokerDataFromChrome, jobParameters);
         return String.format("Batch job has been invoked");
     }
 

@@ -34,8 +34,4 @@ public class PasciifinanceApplication {
 		SpringApplication.run(PasciifinanceApplication.class, args);
 
 	}
-
-
-
-
 }

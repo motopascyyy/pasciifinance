@@ -44,13 +44,13 @@ public class TDWebBrokerConfiguration {
     @Autowired
     private AccountService accountService;
 
-    @Value("${webbroker.userName")
+    @Value("${webbroker.userName}")
     private String userName;
 
     @Value("${webbroker.password}")
     private String password;
 
-    @Value("${webbroker.url")
+    @Value("${webbroker.url}")
     private String webBrokerUrl;
 
     @Bean
