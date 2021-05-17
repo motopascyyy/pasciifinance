@@ -124,79 +124,79 @@ public class RestService {
         return entriesSaved;
     }
 
-    @GetMapping("/total_allocation")
-    public Map<String, Double> totalAllocation () {
-        Map<String, Double> totalAllocationMap = new HashMap<>();
-        /*
-        1. Get latest totals per active account
-        2. Get latest allocation percentages per account
-        3. For each account
-            1. Compute $ amounts for each bucket in account
-            2. Add value computed to appropriate bucket in master map
-        4. Verify total summed up of percentages matches total assets (more of a unit test than a PROD test)
-        5. Compute percentages of each bucket in relation to total
-        6. Compute percentages of investment buckets (i.e not cash or cash equiv)
-         */
-
-        BigDecimal cadEqtValue = new BigDecimal(0);
-        BigDecimal usEqtValue = new BigDecimal(0);
-        BigDecimal intEqtyValue = new BigDecimal(0);
-
-        BigDecimal fixedIncomeValue = new BigDecimal(0);
-
-        BigDecimal cashValue = new BigDecimal(0);
-        BigDecimal otherAssetsValue = new BigDecimal(0);
-
-        var now = new Date();
-
-        //Step 1
-        List<AccountEntry> latestTotals = entryRepo.getLatestResults(now);
-
-        //Step 2
-        List<AccountAllocationEntry> latestAllocPcts = allocationRepo.getLatestResults(now);
-
-        //Step 3
-        for (AccountEntry total : latestTotals) {
-            Long accId = total.getAccount().getId();
-            AccountAllocationEntry pctMatch = null;
-            for (AccountAllocationEntry allocEntry : latestAllocPcts) {
-                if (allocEntry.getAccount().getId().equals(accId)) {
-                    pctMatch = allocEntry;
-                    break;
-                }
-            }
-            //Step 3.1 + 3.2
-            cadEqtValue = cadEqtValue.add(total.getMarketValue().multiply(pctMatch.getCanadianEquity()));
-            usEqtValue = usEqtValue.add(total.getMarketValue().multiply(pctMatch.getUsEquity()));
-            intEqtyValue = intEqtyValue.add(total.getMarketValue().multiply(pctMatch.getInternationalEquity()));
-
-            //For FI, sum both CAD and Global values. For my use case that's as granular as I want to compute
-            fixedIncomeValue = fixedIncomeValue.add(total.getMarketValue().multiply(pctMatch.getCanadianFixedIncome()).add(total.getMarketValue().multiply(pctMatch.getGlobalFixedIncome())));
-
-            cashValue = cashValue.add(total.getMarketValue().multiply(pctMatch.getCashEquivalent()));
-            otherAssetsValue = otherAssetsValue.add(total.getMarketValue().multiply(pctMatch.getOtherAssets())); //for my use case, this should always be 0
-        }
-
-        //Step 4 //make this a unit test
-
-        //Step 5
-        BigDecimal currentBalance = new BigDecimal(0);
-        for (AccountEntry entry : latestTotals) {
-            if (entry.getAccount().isJointAccount()) {
-                currentBalance = currentBalance.add(entry.getMarketValue().divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP));
-            } else {
-                currentBalance = currentBalance.add(entry.getMarketValue());
-            }
-        }
-
-        //Step 6
-        totalAllocationMap.put("Canadian Equity", cadEqtValue.divide(currentBalance, RoundingMode.HALF_UP).doubleValue());
-        totalAllocationMap.put("US Equity", usEqtValue.divide(currentBalance, RoundingMode.HALF_UP).doubleValue());
-        totalAllocationMap.put("International Equity", intEqtyValue.divide(currentBalance, RoundingMode.HALF_UP).doubleValue());
-        totalAllocationMap.put("Fixed Income", fixedIncomeValue.divide(currentBalance, RoundingMode.HALF_UP).doubleValue());
-        totalAllocationMap.put("Cash and Equivalents", cashValue.divide(currentBalance, RoundingMode.HALF_UP).doubleValue());
-        totalAllocationMap.put("Other Assets", otherAssetsValue.divide(currentBalance, RoundingMode.HALF_UP).doubleValue());
-
-        return totalAllocationMap;
-    }
+//    @GetMapping("/total_allocation")
+//    public Map<String, Double> totalAllocation () {
+//        Map<String, Double> totalAllocationMap = new HashMap<>();
+//        /*
+//        1. Get latest totals per active account
+//        2. Get latest allocation percentages per account
+//        3. For each account
+//            1. Compute $ amounts for each bucket in account
+//            2. Add value computed to appropriate bucket in master map
+//        4. Verify total summed up of percentages matches total assets (more of a unit test than a PROD test)
+//        5. Compute percentages of each bucket in relation to total
+//        6. Compute percentages of investment buckets (i.e not cash or cash equiv)
+//         */
+//
+//        BigDecimal cadEqtValue = new BigDecimal(0);
+//        BigDecimal usEqtValue = new BigDecimal(0);
+//        BigDecimal intEqtyValue = new BigDecimal(0);
+//
+//        BigDecimal fixedIncomeValue = new BigDecimal(0);
+//
+//        BigDecimal cashValue = new BigDecimal(0);
+//        BigDecimal otherAssetsValue = new BigDecimal(0);
+//
+//        var now = new Date();
+//
+//        //Step 1
+//        List<AccountEntry> latestTotals = entryRepo.getLatestResults(now);
+//
+//        //Step 2
+//        List<AccountAllocationEntry> latestAllocPcts = allocationRepo.getLatestResults(now);
+//
+//        //Step 3
+//        for (AccountEntry total : latestTotals) {
+//            Long accId = total.getAccount().getId();
+//            AccountAllocationEntry pctMatch = null;
+//            for (AccountAllocationEntry allocEntry : latestAllocPcts) {
+//                if (allocEntry.getAccount().getId().equals(accId)) {
+//                    pctMatch = allocEntry;
+//                    break;
+//                }
+//            }
+//            //Step 3.1 + 3.2
+//            cadEqtValue = cadEqtValue.add(total.getMarketValue().multiply(pctMatch.getCanadianEquity()));
+//            usEqtValue = usEqtValue.add(total.getMarketValue().multiply(pctMatch.getUsEquity()));
+//            intEqtyValue = intEqtyValue.add(total.getMarketValue().multiply(pctMatch.getInternationalEquity()));
+//
+//            //For FI, sum both CAD and Global values. For my use case that's as granular as I want to compute
+//            fixedIncomeValue = fixedIncomeValue.add(total.getMarketValue().multiply(pctMatch.getCanadianFixedIncome()).add(total.getMarketValue().multiply(pctMatch.getGlobalFixedIncome())));
+//
+//            cashValue = cashValue.add(total.getMarketValue().multiply(pctMatch.getCashEquivalent()));
+//            otherAssetsValue = otherAssetsValue.add(total.getMarketValue().multiply(pctMatch.getOtherAssets())); //for my use case, this should always be 0
+//        }
+//
+//        //Step 4 //make this a unit test
+//
+//        //Step 5
+//        BigDecimal currentBalance = new BigDecimal(0);
+//        for (AccountEntry entry : latestTotals) {
+//            if (entry.getAccount().isJointAccount()) {
+//                currentBalance = currentBalance.add(entry.getMarketValue().divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP));
+//            } else {
+//                currentBalance = currentBalance.add(entry.getMarketValue());
+//            }
+//        }
+//
+//        //Step 6
+//        totalAllocationMap.put("Canadian Equity", cadEqtValue.divide(currentBalance, RoundingMode.HALF_UP).doubleValue());
+//        totalAllocationMap.put("US Equity", usEqtValue.divide(currentBalance, RoundingMode.HALF_UP).doubleValue());
+//        totalAllocationMap.put("International Equity", intEqtyValue.divide(currentBalance, RoundingMode.HALF_UP).doubleValue());
+//        totalAllocationMap.put("Fixed Income", fixedIncomeValue.divide(currentBalance, RoundingMode.HALF_UP).doubleValue());
+//        totalAllocationMap.put("Cash and Equivalents", cashValue.divide(currentBalance, RoundingMode.HALF_UP).doubleValue());
+//        totalAllocationMap.put("Other Assets", otherAssetsValue.divide(currentBalance, RoundingMode.HALF_UP).doubleValue());
+//
+//        return totalAllocationMap;
+//    }
 }

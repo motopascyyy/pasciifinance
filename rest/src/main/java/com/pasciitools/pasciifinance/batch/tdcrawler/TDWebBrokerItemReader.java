@@ -1,5 +1,6 @@
 package com.pasciitools.pasciifinance.batch.tdcrawler;
 
+import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.service.AccountService;
 import org.openqa.selenium.NoSuchElementException;
@@ -18,6 +19,7 @@ import org.springframework.batch.item.UnexpectedInputException;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.*;
 
@@ -27,6 +29,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
     private AccountService accountService;
     private final NumberFormat nfCAD = NumberFormat.getCurrencyInstance(Locale.CANADA);
     private final NumberFormat pctFormatter = NumberFormat.getPercentInstance(Locale.CANADA);
+    private final DecimalFormat decPctFormatter = (DecimalFormat) DecimalFormat.getPercentInstance(Locale.CANADA);
     private WebDriver driver;
     private WebDriverWait wait;
     private Logger log = LoggerFactory.getLogger(TDWebBrokerItemReader.class);
@@ -70,6 +73,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
                 log.error(message, e);
                 if (driver != null) {
                     driver.quit();
+                    driver = null;
                 }
                 throw new NonTransientResourceException(message, e);
             } catch (InterruptedException e) {
@@ -78,6 +82,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
                 log.error(message, e);
                 if (driver != null) {
                     driver.quit();
+                    driver = null;
                 }
                 throw new NonTransientResourceException(message, e);
             }
@@ -122,11 +127,11 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
             click(wait.until(ExpectedConditions.visibilityOfElementLocated(holdingTab)));
             AccountEntry accountEntry = new AccountEntry();
 
-            accountEntry.setAccount(accountService.getAccountFromAccountNumber(accountIdSpan.getText()));
+            Account acc = accountService.getAccountFromAccountNumber(accountIdSpan.getText());
+            accountEntry.setAccount(acc);
 
             /* Need to wait 500ms because I need to wait for the elements to be updated and this looks to be done async.
-             * If this isn't done, values will get attributed to the wrong account and everything will be messed up.
-             * As of yet, I haven't found a good way to wait for the elements to get updated properly.
+             * If this isn't done, values will get attributed to the wrong account updated properly.
              *
              * There are ways of embedding a JS based option but I've avoided that for now.
              */
@@ -134,7 +139,14 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
 
             accountEntry.setMarketValue(getValue(By.className("td-wb-account-totals__total-balance-amount")));
             if (!accountEntry.getMarketValue().equals(zero)) {
-                accountEntry.setBookValue(getValue(By.cssSelector(".td-wb-holdings-di-totals__value--book")));
+                double bookVal = 0;
+                try {
+                    bookVal = getValue(By.cssSelector(".td-wb-holdings-di-totals__value--book"));
+                } catch (NoSuchElementException e) {
+                    //Do nothing. There are times when this is expected behaviour. The initial NaN assignment is expected.
+                    //This happen when there's nothing in that particular account.
+                }
+                accountEntry.setBookValue(bookVal);
                 assignAllocations(accountEntry);
             } else {
                 accountEntry.setBookValue(0);
@@ -153,7 +165,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
         while (iter.hasNext()) {
             var entry = iter.next();
             var label = entry.getKey();
-            var value = new BigDecimal(entry.getValue());
+            var value = entry.getValue();
             switch (label) {
                 case "Canadian Equities":
                     accountEntry.setCanadianEqtPct(value);
@@ -197,7 +209,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
                 new ChromeOptions());
     }
 
-    private double getValue (By by) {
+    private double getValue (By by) throws NoSuchElementException{
         double result = 0;
         WebElement totalValueDiv = null;
         try {
@@ -209,11 +221,11 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
                     "Value found for `By` was %s. " +
                     "Failed to retrieve because of %s. Returning NaN.",
                     by.toString(), parsedValue, e.getMessage());
-            log.error(message, e);
+            log.warn(message, e);
             result = Double.NaN;
         } catch (NoSuchElementException e) {
-            String message = String.format("Could not find element %s. Returning NaN.", by.toString());
-            log.error(message, e);
+            String message = String.format("Could not find element %s.", by.toString());
+            throw new NoSuchElementException(message, e);
         }
         return result;
     }
@@ -222,12 +234,12 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
      * A bit of a backwards implementation. The container that houses all the allocations isn't easily searchable,
      * so I need to find one with a unique ID, then get it's parent, so that I can then traverse all the children
      */
-    private Map<String, Double> getAllAllocationContainers () {
+    private Map<String, BigDecimal> getAllAllocationContainers () {
         By assetAllocationTab = By.cssSelector("td-wb-tab[tdwbtabstatename=\"page.account.asset-allocations\"]");
         WebElement we = wait.until(ExpectedConditions.visibilityOfElementLocated(assetAllocationTab));
         click(we.findElement(By.tagName("a")));
 
-        Map<String, Double> allocationPctMap = new HashMap<>();
+        Map<String, BigDecimal> allocationPctMap = new HashMap<>();
         WebElement cdnEqtDiv = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("td-wb-aria-asset-category-name-CANADIAN_EQUITIES")));
         WebElement allocationContainerDiv = cdnEqtDiv.findElement(By.xpath(PARENT_XPATH));
         List<WebElement> allocationDivs = allocationContainerDiv.findElements(By.xpath(CHILDREN_XPATH_ONE_DOWN));
@@ -235,21 +247,17 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
             try {
                 List<WebElement> elements = el.findElements(By.xpath(CHILDREN_XPATH_ENTIRE_LIST));
                 String key = "";
-                double value = 0.0;
+                BigDecimal value = new BigDecimal(0.0);
                 for (int i = 0; i < elements.size(); i++) {
                     WebElement elmnt = elements.get(i);
                     String className = elmnt.getAttribute("class");
                     if (className != null && className.contains("td-wb-asset-allocations__asset-class-name")) {
                         key = elmnt.getText();
                     } else if (elmnt.getText().trim().equals("% of Portfolio")) {
-                        try {
-                            WebElement webElt = elements.get(i + 1);
-                            String pctString = webElt.getText();
-                            value = pctFormatter.parse(pctString).doubleValue();
-                            break;
-                        } catch (java.text.ParseException e) {
-
-                        }
+                        WebElement webElt = elements.get(i + 1);
+                        String pctString = webElt.getText();
+                        value = new BigDecimal(pctString.trim().replace("%", "")).divide(BigDecimal.valueOf(100));
+                        break;
                     }
                 }
                 if (!"".equals(key))
