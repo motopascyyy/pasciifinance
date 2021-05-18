@@ -1,9 +1,7 @@
 package com.pasciitools.pasciifinance.rest.restreservice;
 
 import com.pasciitools.pasciifinance.common.entity.Account;
-import com.pasciitools.pasciifinance.common.entity.AccountAllocationEntry;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
-import com.pasciitools.pasciifinance.common.repository.AccountAllocationEntryRepository;
 import com.pasciitools.pasciifinance.common.repository.AccountEntryRepository;
 import com.pasciitools.pasciifinance.common.repository.AccountRepository;
 import org.slf4j.Logger;
@@ -26,9 +24,6 @@ public class RestService {
 
     @Autowired
     private AccountRepository accountRepo;
-
-    @Autowired
-    private AccountAllocationEntryRepository allocationRepo;
 
     @GetMapping("/currentValue")
     public String getCurrentValue() {
@@ -152,29 +147,26 @@ public class RestService {
         //Step 1
         List<AccountEntry> latestTotals = entryRepo.getLatestResults(now);
 
-        //Step 2
-        List<AccountAllocationEntry> latestAllocPcts = allocationRepo.getLatestResults(now);
-
         //Step 3
         for (AccountEntry total : latestTotals) {
-            Long accId = total.getAccount().getId();
-            AccountAllocationEntry pctMatch = null;
-            for (AccountAllocationEntry allocEntry : latestAllocPcts) {
-                if (allocEntry.getAccount().getId().equals(accId)) {
-                    pctMatch = allocEntry;
-                    break;
-                }
+
+            if (total.getCanadianEqtPct() != null) {
+                //Step 3.1 + 3.2
+                var marketVal = total.getMarketValue();
+                var localCadEqty = marketVal.multiply(total.getCanadianEqtPct());
+                cadEqtValue = cadEqtValue.add(localCadEqty);
+                usEqtValue = usEqtValue.add(marketVal.multiply(total.getUsEqtPct()));
+                intEqtyValue = intEqtyValue.add(marketVal.multiply(total.getInternationalEqtPct()));
+
+                //For FI, sum both CAD and Global values. For my use case that's as granular as I want to compute
+                fixedIncomeValue = fixedIncomeValue.add(total.getMarketValue().multiply(total.getCadFixedIncomePct())
+                        .add(total.getMarketValue().multiply(total.getGlobalFixedIncomePct())));
+
+                cashValue = cashValue.add(total.getMarketValue().multiply(total.getCashPct()));
+                otherAssetsValue = otherAssetsValue.add(total.getMarketValue().multiply(total.getOtherPct())); //for my use case, this should always be 0
+            } else {
+                log.warn(String.format("Skipping total allocation percentage calc for account %s - %s because there were no asset allocations specified", total.getAccount().getInstitution(), total.getAccount().getAccountLabel()));
             }
-            //Step 3.1 + 3.2
-            cadEqtValue = cadEqtValue.add(total.getMarketValue().multiply(pctMatch.getCanadianEquity()));
-            usEqtValue = usEqtValue.add(total.getMarketValue().multiply(pctMatch.getUsEquity()));
-            intEqtyValue = intEqtyValue.add(total.getMarketValue().multiply(pctMatch.getInternationalEquity()));
-
-            //For FI, sum both CAD and Global values. For my use case that's as granular as I want to compute
-            fixedIncomeValue = fixedIncomeValue.add(total.getMarketValue().multiply(pctMatch.getCanadianFixedIncome()).add(total.getMarketValue().multiply(pctMatch.getGlobalFixedIncome())));
-
-            cashValue = cashValue.add(total.getMarketValue().multiply(pctMatch.getCashEquivalent()));
-            otherAssetsValue = otherAssetsValue.add(total.getMarketValue().multiply(pctMatch.getOtherAssets())); //for my use case, this should always be 0
         }
 
         //Step 4 //make this a unit test
@@ -182,10 +174,14 @@ public class RestService {
         //Step 5
         BigDecimal currentBalance = new BigDecimal(0);
         for (AccountEntry entry : latestTotals) {
-            if (entry.getAccount().isJointAccount()) {
-                currentBalance = currentBalance.add(entry.getMarketValue().divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP));
+            if (entry.getCanadianEqtPct() != null) {
+                if (entry.getAccount().isJointAccount()) {
+                    currentBalance = currentBalance.add(entry.getMarketValue().divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP));
+                } else {
+                    currentBalance = currentBalance.add(entry.getMarketValue());
+                }
             } else {
-                currentBalance = currentBalance.add(entry.getMarketValue());
+                log.warn(String.format("Skipping total balance calc for account %s - %s because there were no asset allocations specified", entry.getAccount().getInstitution(), entry.getAccount().getAccountLabel()));
             }
         }
 

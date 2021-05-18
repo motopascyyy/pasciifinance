@@ -1,4 +1,4 @@
-package com.pasciitools.pasciifinance.batch;
+package com.pasciitools.pasciifinance.batch.listener;
 
 import com.pasciitools.pasciifinance.common.service.AccountEntryService;
 import com.pasciitools.pasciifinance.common.service.AccountService;
@@ -25,10 +25,9 @@ public class JobCompletionNotificationListener extends JobExecutionListenerSuppo
 
     @Override
     public void afterJob(JobExecution jobExecution) {
+        log.info(String.format("AFTER JOB - Status: %s", jobExecution.getStatus()));
         if(jobExecution.getStatus() == BatchStatus.COMPLETED) {
-            log.info("!!! JOB FINISHED! Time to verify the results");
-            log.info(String.format("%s accounts found in the DB.", accountService.getTotalNumberOfAccounts()));
-            log.info(String.format("%s account entries found in the DB.", entryService.getTotalNumberOfEntries()));
+            log.info(String.format("!!! JOB %s - %s FINISHED! Time to verify the results", jobExecution.getJobConfigurationName(), jobExecution.getJobInstance()));
 
         }
     }
