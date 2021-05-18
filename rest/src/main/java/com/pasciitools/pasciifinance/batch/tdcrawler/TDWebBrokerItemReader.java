@@ -49,24 +49,30 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
     private final By holdingTab = By.cssSelector("td-wb-tab[tdwbtabstatename=\"page.account.holdings\"]");
 
     private List<AccountEntry> entries;
-    private int entryIndex = 0;
+    private Iterator<AccountEntry> iter;
 
     @Override
     public AccountEntry read() throws UnexpectedInputException, ParseException, NonTransientResourceException {
 
-        if (driver == null) {
-            log.info("Collecting all the data from WebBroker. This part will take a while. Subsequent steps will be much faster.");
+        if (entries == null) {
+            log.debug("Collecting all the data from WebBroker. This part will take a while. Subsequent steps will be much faster.");
             try {
                 driver = getDriver();
                 loginDriver();
                 wait = new WebDriverWait(driver, 10);
                 WebElement dropDownCarret = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className(CARRET)));
-                log.info("Login successful. Proceeding to data collection.");
+                log.debug("Login successful. Proceeding to data collection.");
                 click(dropDownCarret);
 
                 WebElement divOfAccounts = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("td-wb-dropdown__panel")));
                 List<WebElement> accountDivs = divOfAccounts.findElements(By.xpath(CHILDREN_XPATH_ONE_DOWN));
                 entries = collectData(accountDivs);
+                iter = entries.iterator();
+                if (driver != null) {
+                    driver.quit();
+                    driver = null;
+                    log.debug("Quitting browser since no longer necessary to read entries. Everything collected from Web Broker.");
+                }
             } catch (MalformedURLException e) {
                 String message = "URL was malformed. Could not establish connection. " +
                         "Throwing RuntimeException to kill the process.";
@@ -88,16 +94,12 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
             }
         }
 
-        AccountEntry nextEntry = null;
-        if (entryIndex < entries.size()){
-            nextEntry = entries.get(entryIndex);
-            entryIndex++;
+        AccountEntry nextEntry;
+        if (iter != null && iter.hasNext()) {
+            nextEntry = iter.next();
         } else {
-            entryIndex = 0;
-            if (driver != null) {
-                driver.quit();
-            }
-            driver = null;
+            nextEntry = null;
+            entries = null;
         }
         return nextEntry;
     }
@@ -204,9 +206,12 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
     }
 
     public WebDriver getDriver () throws MalformedURLException {
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless");
+
         return new RemoteWebDriver(
                 new URL("http://127.0.0.1:9515"),
-                new ChromeOptions());
+                options);
     }
 
     private double getValue (By by) throws NoSuchElementException{
