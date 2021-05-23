@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.util.*;
 
-
+@Deprecated
 public class ExcelFileDataLoader {
 
     private static final Logger log = LoggerFactory.getLogger(ExcelFileDataLoader.class);
