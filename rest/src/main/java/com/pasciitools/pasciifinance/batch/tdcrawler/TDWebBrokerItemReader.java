@@ -91,6 +91,14 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
                     driver = null;
                 }
                 throw new NonTransientResourceException(message, e);
+            } catch (ElementClickInterceptedException e){
+                String message = "Flow interrupted due to an element being clicked. Throwing a runtime exception and quitting.";
+                log.error(message, e);
+                if (driver != null) {
+                    driver.quit();
+                    driver = null;
+                }
+                throw new NonTransientResourceException(message, e);
             }
         }
 
@@ -207,7 +215,6 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
 
     public WebDriver getDriver () throws MalformedURLException {
         ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless");
 
         return new RemoteWebDriver(
                 new URL("http://127.0.0.1:9515"),

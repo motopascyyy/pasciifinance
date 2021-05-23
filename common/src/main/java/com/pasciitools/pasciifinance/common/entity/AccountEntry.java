@@ -17,21 +17,21 @@ public class AccountEntry {
 
     private BigDecimal marketValue;
 
-    @Column(scale = 3, precision = 3)
+    @Column(scale = 3, precision = 4)
     private BigDecimal canadianEqtPct;
-    @Column(scale = 3, precision = 3)
+    @Column(scale = 3, precision = 4)
     private BigDecimal usEqtPct;
-    @Column(scale = 3, precision = 3)
+    @Column(scale = 3, precision = 4)
     private BigDecimal internationalEqtPct;
-    @Column(scale = 3, precision = 3)
+    @Column(scale = 3, precision = 4)
     private BigDecimal emergingMktsEqtPct;
-    @Column(scale = 3, precision = 3)
+    @Column(scale = 3, precision = 4)
     private BigDecimal cadFixedIncomePct;
-    @Column(scale = 3, precision = 3)
+    @Column(scale = 3, precision = 4)
     private BigDecimal globalFixedIncomePct;
-    @Column(scale = 3, precision = 3)
+    @Column(scale = 3, precision = 4)
     private BigDecimal cashPct;
-    @Column(scale = 3, precision = 3)
+    @Column(scale = 3, precision = 4)
     private BigDecimal otherPct;
 
 
