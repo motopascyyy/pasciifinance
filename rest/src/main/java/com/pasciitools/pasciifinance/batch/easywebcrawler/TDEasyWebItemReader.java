@@ -133,13 +133,13 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
             WebElement accountIdSpan = accountSpan.findElement(By.tagName("span")); //yes, for some reason the span is nested within another span...
             log.info(String.format("accountIdSpan text: %s", accountIdSpan.getText()));
             AccountEntry accountEntry = new AccountEntry();
-            String accountNumber = accountIdSpan.getText().replace("›","");
-
-            Account acc = accountService.getAccountFromAccountNumber(accountNumber);
+            String accountNumber = accountIdSpan.getText().replace("›","").trim();
+            String cleanAccountNumber = cleanTextContent(accountNumber);
+            Account acc = accountService.getAccountFromAccountNumber(cleanAccountNumber);
             if (acc != null)
                 accountEntry.setAccount(acc);
             else
-                throw new InterruptedException(String.format("Account not found for account number: %s", accountSpan.getText()));
+                throw new InterruptedException(String.format("Account not found for account number: %s", accountNumber));
 
             double amount = 0;
             try {
@@ -160,6 +160,19 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
         }
         log.info("Finished parsing for all Web Broker details");
         return entries;
+    }
+
+    private String cleanTextContent(String text) {
+        // strips off all non-ASCII characters
+        text = text.replaceAll("[^\\x00-\\x7F]", "");
+
+        // erases all the ASCII control characters
+        text = text.replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", "");
+
+        // removes non-printable characters from Unicode
+        text = text.replaceAll("\\p{C}", "");
+
+        return text.trim();
     }
 
     private void assignAllocations (AccountEntry accountEntry) {
