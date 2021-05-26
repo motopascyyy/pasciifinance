@@ -61,7 +61,7 @@ function createInput (placeholderText, className, elementId) {
     field.setAttribute("placeholder", placeholderText);
     field.setAttribute("class", className);
     field.setAttribute("autocomplete", "off");
-    field.setAttribute("type", "number");
+    field.setAttribute("type", "text");
     field.setAttribute("id", elementId);
     field.setAttribute("name", elementId);
     field.setAttribute("step", "0.01");
@@ -82,6 +82,15 @@ function updateBookValue (fieldId, marketValue, growthValue) {
 
 function round(value, decimals) {
     return Number(Math.round(value+'e'+decimals)+'e-'+decimals);
+}
+
+function parseNumber(value, locales = navigator.languages) {
+    const example = Intl.NumberFormat(locales).format('1.1');
+    const cleanPattern = new RegExp(`[^-+0-9${ example.charAt( 1 ) }]`, 'g');
+    const cleaned = value.replace(cleanPattern, '');
+    const normalized = cleaned.replace(example.charAt(1), '.');
+
+    return parseFloat(normalized);
 }
 
 function createEntryContainerDiv () {
@@ -115,7 +124,7 @@ function submitEntries ()  {
     for (let i = 0; i < accounts.length; i++) {
         let entry = accounts[i].entry;
         if (entry !== undefined && entry != null) {
-            if (entry.bookValue !== undefined && entry.marketValue !== undefined){
+            if (entry.bookValue !== undefined && entry.marketValue !== undefined && !Object.is(entry.bookValue,NaN) && !Object.is(entry.marketValue,NaN)){
                 entriesToSubmit.push(entry);
             } else {
                 console.log("Entry for account " + accounts[i].id + " is either missing a book value or market value.\n\t" + JSON.stringify(entry));
@@ -149,15 +158,23 @@ function collectEntries () {
         let accountId = parseInt(accKey.split("_")[1]);
         let valueType = accKey.split("_")[2];
         if (inputValue !== undefined && inputValue != null && inputValue.trim() !== "" ){
+            let inputValueNum = parseNumber(inputValue, "en-CA");
             let acc = getAccount(accountId);
             let accEntry = acc.entry;
             if (accEntry == null) {
                 accEntry = createNewEntry(accountId);
             }
-            if (valueType === "mv"){accEntry.marketValue = inputValue}
-            else {accEntry.bookValue = inputValue}
-            acc.entry = accEntry;
-            updateAccountWithEntry(acc);
+            if (inputValueNum !== NaN) {
+                if (valueType === "mv") {
+                    accEntry.marketValue = inputValueNum
+                } else {
+                    accEntry.bookValue = inputValueNum
+                }
+                acc.entry = accEntry;
+                updateAccountWithEntry(acc);
+            } else {
+                console.log("Input value is NaN for account " + accountId + ". Skipping entry");
+            }
         }
     }
 }

@@ -23,7 +23,7 @@ input {
     -webkit-appearance: textfield;
 }
 
-.entry_label, input[type=number]  {
+.entry_label, input[type=text]  {
     padding: 8px 5px 8px 5px;
     margin: 5px;
     width: 95%;
