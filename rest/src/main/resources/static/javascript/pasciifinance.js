@@ -74,9 +74,14 @@ function updateBookValue (fieldId, marketValue, growthValue) {
         if (Number.isNaN(parseFloat(marketValue)) || Number.isNaN(parseFloat(growthValue))) {
             document.getElementById(fieldId).value = 0.00;
         } else {
-            document.getElementById(fieldId).value = (parseFloat(marketValue) - parseFloat(growthValue));
+            let bookVal = parseFloat(marketValue) - parseFloat(growthValue);
+            document.getElementById(fieldId).value = (round(bookVal, 2));
         }
     }
+}
+
+function round(value, decimals) {
+    return Number(Math.round(value+'e'+decimals)+'e-'+decimals);
 }
 
 function createEntryContainerDiv () {
