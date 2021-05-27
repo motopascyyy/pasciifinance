@@ -86,11 +86,17 @@ function round(value, decimals) {
 
 function parseNumber(value, locales = navigator.languages) {
     const example = Intl.NumberFormat(locales).format('1.1');
-    const cleanPattern = new RegExp(`[^-+0-9${ example.charAt( 1 ) }]`, 'g');
-    const cleaned = value.replace(cleanPattern, '');
-    const normalized = cleaned.replace(example.charAt(1), '.');
+    const alphaCharPattern = new RegExp(`[a-zA-Z]+`, 'g');
+    let alphaArr = alphaCharPattern.exec(value);
+    if (alphaArr === null || alphaArr.length == 0) {
+        const cleanPattern = new RegExp(`[^-+0-9${ example.charAt( 1 ) }]`, 'g');
+        const cleaned = value.replace(cleanPattern, '');
+        const normalized = cleaned.replace(example.charAt(1), '.');
 
-    return parseFloat(normalized);
+        return parseFloat(normalized);
+    } else {
+        return NaN;
+    }
 }
 
 function createEntryContainerDiv () {
@@ -134,18 +140,28 @@ function submitEntries ()  {
         }
     }
 
-    const xhr = new XMLHttpRequest();
-    const url='/entries';
-    xhr.open("POST", url);
-    xhr.setRequestHeader("Content-Type", "application/json");
-//    Http.data = entriesToSubmit;
-    xhr.send(JSON.stringify(entriesToSubmit));
-    xhr.onreadystatechange = (e) => {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-            getBalanceString();
+    if (entriesToSubmit.length > 0) {
+        const xhr = new XMLHttpRequest();
+        const url = '/entries';
+        xhr.open("POST", url);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        //    Http.data = entriesToSubmit;
+        xhr.send(JSON.stringify(entriesToSubmit));
+        xhr.onreadystatechange = (e) => {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                getBalanceString();
+                form.reset();
+            }
         }
+    } else {
+        let div = document.getElementById("final_number")
+        div.innerHTML = '';
+        let newHeader = document.createElement("H2");
+        newHeader.setAttribute("id", "balance_header")
+        let headerText = document.createTextNode("Nothing submitted. No valid entries");
+        newHeader.appendChild(headerText);
+        div.appendChild(newHeader);
     }
-
 }
 
 function collectEntries () {
