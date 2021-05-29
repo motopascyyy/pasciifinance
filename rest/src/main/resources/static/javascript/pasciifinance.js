@@ -183,7 +183,7 @@ function collectEntries () {
             if (inputValueNum !== NaN) {
                 if (valueType === "mv") {
                     accEntry.marketValue = inputValueNum
-                } else {
+                } else if (valueType === "bv") {
                     accEntry.bookValue = inputValueNum
                 }
                 acc.entry = accEntry;
