@@ -66,6 +66,43 @@ public class RestService {
         }
     }
 
+
+    @GetMapping("/time_series_sumary")
+    public List<TimeSeriesSummary> getTimeSeriesSummary(Date startDate) {
+        List<TimeSeriesSummary> tsSum = new ArrayList<>();
+        return tsSum;
+    }
+
+    class TimeSeriesSummary {
+        private Date date;
+        private double bookValue;
+        private double marketValue;
+
+        public Date getDate() {
+            return date;
+        }
+
+        public void setDate(Date date) {
+            this.date = date;
+        }
+
+        public double getBookValue() {
+            return bookValue;
+        }
+
+        public void setBookValue(double bookValue) {
+            this.bookValue = bookValue;
+        }
+
+        public double getMarketValue() {
+            return marketValue;
+        }
+
+        public void setMarketValue(double marketValue) {
+            this.marketValue = marketValue;
+        }
+    }
+
     private String getFormattedAsCurrency(BigDecimal dec) {
         dec = dec.setScale(2, RoundingMode.HALF_UP);
         return nfCAD.format(dec.doubleValue());
