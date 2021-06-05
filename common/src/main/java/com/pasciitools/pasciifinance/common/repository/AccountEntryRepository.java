@@ -49,9 +49,9 @@ public interface AccountEntryRepository extends CrudRepository<AccountEntry, Lon
 
     String TIME_SERIES_ENTRY_QUERY =
             "select " +
-            "   e_date as ENTRY_DATE, " +
-            "   sum(coalesce(BOOK_VALUE, PREVIOUS_BOOK_VALUE)) as BOOK_VALUE, " +
-            "   sum(coalesce(MARKET_VALUE, PREVIOUS_MARKET_VALUE)) as MARKET_VALUE " +
+            "   e_date as entryDate, " +
+            "   sum(coalesce(BOOK_VALUE, PREVIOUS_BOOK_VALUE)) as bookValue, " +
+            "   sum(coalesce(MARKET_VALUE, PREVIOUS_MARKET_VALUE)) as marketValue " +
             "from " +
             "   ( " +
             "      select " +
@@ -107,7 +107,7 @@ public interface AccountEntryRepository extends CrudRepository<AccountEntry, Lon
             "group by " +
             "   e_date " +
             "order by " +
-            "   e_date asc ";
+            "   e_date asc";
 
     @Query(value= TIME_SERIES_ENTRY_QUERY, nativeQuery = true)
     List<SummarizedAccountEntry> findAccountEntriesByEntryDateAfter(LocalDate startDate);

@@ -24,8 +24,8 @@ Http.onreadystatechange = (e) => {
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Market Value',
-                    data: marketValues
+                        label: 'Market Value',
+                        data: marketValues
                     },
                     {
                         label: "Book Value",

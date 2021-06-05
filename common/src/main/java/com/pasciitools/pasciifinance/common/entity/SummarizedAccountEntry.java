@@ -6,8 +6,8 @@ public interface SummarizedAccountEntry {
 
     public LocalDate getEntryDate();
 
-    public double getBookValue();
+    public Double getBookValue();
 
-    public double getMarketValue();
+    public Double getMarketValue();
 
 }
