@@ -25,11 +25,16 @@ Http.onreadystatechange = (e) => {
                 labels: labels,
                 datasets: [{
                         label: 'Market Value',
-                        data: marketValues
+                        data: marketValues,
+                        fill: true,
+                        borderColor: 'red',
+                        tension: 0.3
                     },
                     {
                         label: "Book Value",
-                        data: bookValues
+                        data: bookValues,
+                        borderColor: 'rgb(75, 192, 192)',
+                        fill: true
                     }
                     ]
             }

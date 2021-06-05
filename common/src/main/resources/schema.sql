@@ -8,3 +8,14 @@ from
 group by
     account_id,
     e_date);
+
+CREATE VIEW LATEST_WEEKLY_ACCOUNT_ENTRY(ENTRY_ID, ACCOUNT_ID, E_DATE) AS
+SELECT
+    MAX(ID) AS ENTRY_ID,
+    ACCOUNT_ID,
+    TO_CHAR(ENTRY_DATE, 'yyyy-mm') AS E_DATE
+FROM
+    ACCOUNT_ENTRY
+GROUP BY
+    ACCOUNT_ID,
+    TO_CHAR(ENTRY_DATE, 'yyyy-mm');

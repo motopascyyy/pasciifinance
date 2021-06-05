@@ -6,7 +6,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
+import java.text.DateFormatSymbols;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +75,7 @@ public interface AccountEntryRepository extends CrudRepository<AccountEntry, Lon
             "      from " +
             "         ( " +
             "            select " +
-            "               distinct to_char(entry_date, 'yyyy-mm-dd') as e_date, " +
+            "               distinct to_char(entry_date, 'yyyy-mm') as e_date, " +
             "               accts.id as acc_id " +
             "            from " +
             "               account_entry " +
@@ -98,7 +100,7 @@ public interface AccountEntryRepository extends CrudRepository<AccountEntry, Lon
             "                  ELSE MARKET_VALUE " +
             "               END as MARKET_VALUE " +
             "            from " +
-            "               LATEST_ACCOUNT_ENTRY lae " +
+            "               LATEST_WEEKLY_ACCOUNT_ENTRY lae " +
             "               inner join account_entry ae on lae.ENTRY_ID = ae.id " +
             "               inner join account acc on ae.account_id = acc.id " +
             "         ) entries on dates.e_date = entries.e_date " +

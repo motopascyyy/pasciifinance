@@ -4,7 +4,7 @@ import java.time.LocalDate;
 
 public interface SummarizedAccountEntry {
 
-    public LocalDate getEntryDate();
+    public String getEntryDate();
 
     public Double getBookValue();
 
