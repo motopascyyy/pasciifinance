@@ -1,5 +1,6 @@
 let accounts;
 let form;
+let modal;
 
 function getAccounts () {
     const Http = new XMLHttpRequest();
@@ -120,6 +121,8 @@ function getBalanceString () {
             let headerText = document.createTextNode(Http.responseText);
             newHeader.appendChild(headerText);
             div.appendChild(newHeader);
+            loadModal();
+            loadChart();
         }
     }
 }
@@ -230,6 +233,63 @@ function updateAccountWithEntry (account) {
     }
 }
 
+
+function loadModal () {
+    if (modal == null) {modal = document.getElementById("myModal");}
+    modal.style.display = "block";
+}
+
+function closeModal () {
+    if (modal == null) {modal = document.getElementById("myModal");}
+    modal.style.display = "none";
+}
+
+
+function loadChart () {
+    let startDate = new Date ('2020-01-01').toJSON();
+    const Http = new XMLHttpRequest();
+    const url='/time_series_summary?startDate=' + startDate;
+    Http.open("GET", url);
+    Http.send();
+
+    Http.onreadystatechange = (e) => {
+        if (Http.readyState === 4 && Http.status === 200) {
+            let summaryEntryArr = JSON.parse(Http.responseText);
+            let labels = [];
+            let marketValues = [];
+            let bookValues = [];
+            for (let entry of summaryEntryArr) {
+                marketValues.push(entry.marketValue);
+                bookValues.push(entry.bookValue);
+                labels.push(entry.entryDate);
+            }
+
+            let ctx = document.getElementById('myChart').getContext('2d');
+            let myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Market Value',
+                        data: marketValues,
+                        fill: true,
+                        borderColor: 'red',
+                        tension: 0.3
+                    },
+                        {
+                            label: "Book Value",
+                            data: bookValues,
+                            borderColor: 'rgb(75, 192, 192)',
+                            fill: true
+                        }
+                    ]
+                }
+            });
+
+        }
+    }
+}
+
 let submitBtn;
 
 window.addEventListener( "load", function () {
@@ -239,3 +299,9 @@ window.addEventListener( "load", function () {
       { submitEntries();
     } )
 })
+
+window.onclick = function(event) {
+    if (event.target == modal) {
+        closeModal();
+    }
+}
