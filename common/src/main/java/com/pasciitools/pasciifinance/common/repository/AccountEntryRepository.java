@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.text.DateFormatSymbols;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.Date;
 import java.util.List;
@@ -44,7 +45,7 @@ public interface AccountEntryRepository extends CrudRepository<AccountEntry, Lon
             "    ae.account_id ";
 
     @Query(value= LATEST_ENTRIES_QUERY, nativeQuery = true)
-    List<AccountEntry> getLatestResults (LocalDate d);
+    List<AccountEntry> getLatestResults (LocalDateTime d);
 
     AccountEntry findTopByOrderByEntryDateDesc();
 

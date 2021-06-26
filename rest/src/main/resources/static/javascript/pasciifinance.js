@@ -247,8 +247,8 @@ function closeModal () {
 
 function loadChart () {
     let startDate = new Date ('2020-01-01').toJSON();
-    const Http = new XMLHttpRequest();
-    const url='/time_series_summary?startDate=' + startDate;
+    let Http = new XMLHttpRequest();
+    let url='/time_series_summary?startDate=' + startDate;
     Http.open("GET", url);
     Http.send();
 

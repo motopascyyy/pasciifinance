@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -32,8 +33,8 @@ public class RestService {
     @GetMapping("/currentValue")
     public String getCurrentValue() {
         String result = "$0";
-        var now = LocalDate.now();
-        var latestEntries = entryRepo.getLatestResults(LocalDate.now());
+        var now = LocalDateTime.now();
+        var latestEntries = entryRepo.getLatestResults(now);
         if (latestEntries != null && latestEntries.size() > 0) {
             Date latestMaxDate = latestEntries.get(0).getEntryDate();
             Calendar cal = Calendar.getInstance();
@@ -63,8 +64,10 @@ public class RestService {
 
             if (currentBalance.doubleValue() > previousBalance.doubleValue()) {
                 result = currentBalance.doubleValue() != 0.0 ? String.format("%s up from %s", getFormattedAsCurrency(currentBalance), getFormattedAsCurrency(previousBalance)) : result;
-            } else
+            } else if (currentBalance.doubleValue() < previousBalance.doubleValue())
                 result = currentBalance.doubleValue() != 0.0 ? String.format("%s down from %s", getFormattedAsCurrency(currentBalance), getFormattedAsCurrency(previousBalance)) : result;
+            else
+                result = String.format("No change week over week. Current balance: %s", getFormattedAsCurrency(currentBalance));
             return result;
         } else {
             return "No results retrieved. Apparently you're broke!";
@@ -155,7 +158,7 @@ public class RestService {
         BigDecimal cashValue = new BigDecimal(0);
         BigDecimal otherAssetsValue = new BigDecimal(0);
 
-        var now = LocalDate.now();
+        var now = LocalDateTime.now();
 
         //Step 1
         List<AccountEntry> latestTotals = entryRepo.getLatestResults(now);

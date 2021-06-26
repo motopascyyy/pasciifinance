@@ -45,7 +45,7 @@ input {
 #button_banner {
     /*! margin: 0 auto; */
     text-align: center;
-    position: fixed;
+    /*position: fixed;*/
     left: auto;
     right: auto;
     top: 0;
