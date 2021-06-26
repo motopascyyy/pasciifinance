@@ -124,12 +124,13 @@ public class RestService {
         Iterator<AccountEntry> iter = iterable.iterator();
         List<AccountEntry> entriesSaved = new ArrayList<>();
         while (iter.hasNext()) {
-            entriesSaved.add((AccountEntry) iter.next());
+            entriesSaved.add(iter.next());
         }
         if (entriesSaved.size() != entries.size()) {
             log.error("Not all entries submitted were saved. Please investigate:\n\t Submitted:\n" + entries + "\n\nSaved:\n" + entriesSaved);
         } else {
-            log.debug(String.format("All %s entries submitted were saved.", entriesSaved.size()));
+            if (log.isDebugEnabled())
+                log.debug(String.format("All %s entries submitted were saved.", entriesSaved.size()));
         }
 
         return entriesSaved;
