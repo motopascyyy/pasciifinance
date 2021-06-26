@@ -2,16 +2,21 @@ package com.pasciitools.pasciifinance.rest.restreservice;
 
 import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
+import com.pasciitools.pasciifinance.common.entity.SummarizedAccountEntry;
 import com.pasciitools.pasciifinance.common.repository.AccountEntryRepository;
 import com.pasciitools.pasciifinance.common.repository.AccountRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @RestController
@@ -28,14 +33,15 @@ public class RestService {
     @GetMapping("/currentValue")
     public String getCurrentValue() {
         String result = "$0";
-        List<AccountEntry> latestEntries = entryRepo.getLatestResults(new Date());
+        var now = LocalDateTime.now();
+        var latestEntries = entryRepo.getLatestResults(now);
         if (latestEntries != null && latestEntries.size() > 0) {
             Date latestMaxDate = latestEntries.get(0).getEntryDate();
             Calendar cal = Calendar.getInstance();
             cal.setTime(latestMaxDate);
             cal.add(Calendar.DAY_OF_YEAR, -1);
-            List<AccountEntry> previousEntries = entryRepo.getLatestResults(cal.getTime());
-            List<Long> accountIds = new ArrayList<>();
+            var previousEntries = entryRepo.getLatestResults(now.minus(1, ChronoUnit.DAYS));
+            var accountIds = new ArrayList<Long>();
 
 
             BigDecimal previousBalance = new BigDecimal(0);
@@ -58,12 +64,22 @@ public class RestService {
 
             if (currentBalance.doubleValue() > previousBalance.doubleValue()) {
                 result = currentBalance.doubleValue() != 0.0 ? String.format("%s up from %s", getFormattedAsCurrency(currentBalance), getFormattedAsCurrency(previousBalance)) : result;
-            } else
+            } else if (currentBalance.doubleValue() < previousBalance.doubleValue())
                 result = currentBalance.doubleValue() != 0.0 ? String.format("%s down from %s", getFormattedAsCurrency(currentBalance), getFormattedAsCurrency(previousBalance)) : result;
+            else
+                result = String.format("No change week over week. Current balance: %s", getFormattedAsCurrency(currentBalance));
             return result;
         } else {
             return "No results retrieved. Apparently you're broke!";
         }
+    }
+
+
+    @GetMapping("/time_series_summary")
+    public List<SummarizedAccountEntry> getTimeSeriesSummary(@RequestParam
+                                                                 @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDate startDate) {
+        List<SummarizedAccountEntry> tsEntries = entryRepo.findAccountEntriesByEntryDateAfter(startDate);
+        return tsEntries;
     }
 
     private String getFormattedAsCurrency(BigDecimal dec) {
@@ -108,12 +124,13 @@ public class RestService {
         Iterator<AccountEntry> iter = iterable.iterator();
         List<AccountEntry> entriesSaved = new ArrayList<>();
         while (iter.hasNext()) {
-            entriesSaved.add((AccountEntry) iter.next());
+            entriesSaved.add(iter.next());
         }
         if (entriesSaved.size() != entries.size()) {
             log.error("Not all entries submitted were saved. Please investigate:\n\t Submitted:\n" + entries + "\n\nSaved:\n" + entriesSaved);
         } else {
-            log.debug(String.format("All %s entries submitted were saved.", entriesSaved.size()));
+            if (log.isDebugEnabled())
+                log.debug(String.format("All %s entries submitted were saved.", entriesSaved.size()));
         }
 
         return entriesSaved;
@@ -142,7 +159,7 @@ public class RestService {
         BigDecimal cashValue = new BigDecimal(0);
         BigDecimal otherAssetsValue = new BigDecimal(0);
 
-        var now = new Date();
+        var now = LocalDateTime.now();
 
         //Step 1
         List<AccountEntry> latestTotals = entryRepo.getLatestResults(now);

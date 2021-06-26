@@ -8,6 +8,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <meta name="HandheldFriendly" content="true">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.3.2/chart.min.js"></script>
 </head>
 <body>
 <form action="#" onsubmit="return getBalanceString()" id="my_form"></form>
@@ -16,8 +17,20 @@
     <input class="button" type="button" id="balance_button" onclick = "getBalanceString()" value = "Get Balance" />
     <input class="button" id="submit" type="button" value="Submit" form="my_form">
 </div>
-<div id="final_number"></div>
 <div id="form_entry_area">
+</div>
+
+
+<!-- The Modal -->
+<div id="myModal" class="modal">
+
+    <!-- Modal content -->
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <div id="final_number"></div>
+        <canvas id="myChart" width="600" height="400"></canvas>
+    </div>
+
 </div>
 
 </body>
