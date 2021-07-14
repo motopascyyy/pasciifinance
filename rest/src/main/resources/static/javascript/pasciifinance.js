@@ -89,7 +89,7 @@ function parseNumber(value, locales = navigator.languages) {
     const example = Intl.NumberFormat(locales).format('1.1');
     const alphaCharPattern = new RegExp(`[a-zA-Z]+`, 'g');
     let alphaArr = alphaCharPattern.exec(value);
-    if (alphaArr === null || alphaArr.length == 0) {
+    if (alphaArr === null || alphaArr.length === 0) {
         const cleanPattern = new RegExp(`[^-+0-9${ example.charAt( 1 ) }]`, 'g');
         const cleaned = value.replace(cleanPattern, '');
         const normalized = cleaned.replace(example.charAt(1), '.');
@@ -183,7 +183,7 @@ function collectEntries () {
             if (accEntry == null) {
                 accEntry = createNewEntry(accountId);
             }
-            if (inputValueNum !== NaN) {
+            if (inputValueNum !== NaN) { //TODO FIX THIS
                 if (valueType === "mv") {
                     accEntry.marketValue = inputValueNum
                 } else if (valueType === "bv") {
@@ -290,6 +290,26 @@ function loadChart () {
     }
 }
 
+function fetchAllData () {
+    let Http = new XMLHttpRequest();
+    let url='/pullAllData';
+    let spinnerButton = document.getElementById("fetch_data");
+    spinnerButton.classList.add("button--loading");
+    Http.open("GET", url);
+    Http.send();
+
+    Http.onreadystatechange = (e) => {
+        if (Http.readyState === 4 && Http.status === 200) {
+            spinnerButton.classList.remove("button--loading");
+
+        } else if (Http.readyState === 4 && Http.status !== 200){
+            spinnerButton.classList.remove("button--loading");
+            spinnerButton.textContent = "X - FAIL";
+        }
+    }
+}
+
+
 let submitBtn;
 
 window.addEventListener( "load", function () {
@@ -301,7 +321,7 @@ window.addEventListener( "load", function () {
 })
 
 window.onclick = function(event) {
-    if (event.target == modal) {
+    if (event.target === modal) {
         closeModal();
     }
 }
