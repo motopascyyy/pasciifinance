@@ -2,7 +2,7 @@ package com.pasciitools.pasciifinance.common.entity;
 
 import javax.persistence.*;
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(uniqueConstraints={@UniqueConstraint(columnNames={"entryDate", "ACCOUNT_ID"})})
@@ -11,7 +11,7 @@ public class AccountEntry {
     @Id
     @GeneratedValue
     private Long id;
-    private Date entryDate;
+    private LocalDateTime entryDate;
 
     private BigDecimal bookValue;
 
@@ -39,11 +39,11 @@ public class AccountEntry {
     @JoinColumn(name = "ACCOUNT_ID")
     private Account account;
 
-    public Date getEntryDate() {
+    public LocalDateTime getEntryDate() {
         return entryDate;
     }
 
-    public void setEntryDate(Date entryDate) {
+    public void setEntryDate(LocalDateTime entryDate) {
         this.entryDate = entryDate;
     }
 

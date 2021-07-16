@@ -21,6 +21,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
+import java.time.LocalDateTime;
 import java.util.*;
 
 public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
@@ -62,6 +63,10 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
                 wait = new WebDriverWait(driver, 10);
                 WebElement dropDownCarret = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className(CARRET)));
                 log.debug("Login successful. Proceeding to data collection.");
+                if (driver.findElement(By.id("markAsReadAndDismiss")) != null) {
+                    click(driver.findElement(By.id("markAsReadAndDismiss")));
+                    log.info("There was a message that had to be dismissed. Cleared this item so that we could proceed");
+                }
                 click(dropDownCarret);
 
                 WebElement divOfAccounts = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("td-wb-dropdown__panel")));
@@ -126,7 +131,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
     private List<AccountEntry> collectData (List<WebElement> accountDivs) throws InterruptedException {
         List<AccountEntry> entries= new ArrayList<>();
         var zero = new BigDecimal(0);
-        Date currentDate = new Date();
+        var currentDate = LocalDateTime.now();
         for (int i = 0; i < accountDivs.size(); i++) {
             if (i != 0)
                 click(driver.findElement(By.className(CARRET)));

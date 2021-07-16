@@ -3,7 +3,6 @@ package com.pasciitools.pasciifinance.rest;
 import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.repository.AccountRepository;
-import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -11,8 +10,13 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.util.*;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 @Deprecated
 public class ExcelFileDataLoader {
@@ -40,8 +44,8 @@ public class ExcelFileDataLoader {
 
     public List<Account> parseForAccounts() {
         List<Account> accounts = new ArrayList<>();
-        for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
-            Account acc = new Account();
+        for (var i = 0; i < workbook.getNumberOfSheets(); i++) {
+            var acc = new Account();
             String sheetName = workbook.getSheetName(i).trim();
             if (!sheetName.toLowerCase().contains("summary")) {
                 String inst = getInstitutionFromSheetName(sheetName);
@@ -77,23 +81,23 @@ public class ExcelFileDataLoader {
         List<AccountEntry> entries = new ArrayList<>();
         Iterator<Sheet> iter = workbook.sheetIterator();
         while (iter.hasNext()) {
-            Sheet sheet = iter.next();
+            var sheet = iter.next();
             String sheetName = sheet.getSheetName();
             if (!sheetName.toLowerCase().contains("summary")) {
-                Account accountId = getAcctId(sheetName);
+                var accountId = getAcctId(sheetName);
                 for (Row row : sheet) {
                     if (row.getRowNum() != 0) {
-                        AccountEntry ae = new AccountEntry();
+                        var ae = new AccountEntry();
                         ae.setAccount(accountId);
-                        Cell dateCell = row.getCell(0);
-                        Cell bookValueCell = row.getCell(1);
-                        Cell marketValueCell = row.getCell(2);
+                        var dateCell = row.getCell(0);
+                        var bookValueCell = row.getCell(1);
+                        var marketValueCell = row.getCell(2);
                         if (dateCell == null || dateCell.getDateCellValue() == null) {
                             if (log.isDebugEnabled())
                                 log.debug(String.format("Exiting sheet %s at %o", sheetName, row.getRowNum()));
                             break;
                         }
-                        Date entryDate = dateCell.getDateCellValue();
+                        var entryDate = dateCell.getDateCellValue().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
                         double bookValue = bookValueCell != null ? bookValueCell.getNumericCellValue() : marketValueCell.getNumericCellValue();
                         double marketValue = marketValueCell.getNumericCellValue();
                         ae.setEntryDate(entryDate);

@@ -44,9 +44,9 @@ public class AccountItemReader implements ItemReader<Account> {
             this.accountService = accountService;
             accounts = createAccountList(workbook);
         } catch (FileNotFoundException e) {
-            log.error(String.format("Couldn't find the file: %s%nbecause of: %s", pathToFile, e.getMessage()), e);
+            log.error(String.format("Couldn't find the file: %s%nCause: %s.%nImpact: Unable to seed data into the DB from the desired file.", pathToFile, e.getMessage()), e);
         } catch (IOException e) {
-            log.error(String.format("Generic IO Exception on file: %s%nbecause of: %s", pathToFile, e.getMessage()), e);
+            log.error(String.format("Generic IO Exception on file: %s%nCause: %s", pathToFile, e.getMessage()), e);
         }
     }
 
