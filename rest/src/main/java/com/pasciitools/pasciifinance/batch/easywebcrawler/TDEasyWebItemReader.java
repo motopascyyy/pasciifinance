@@ -1,9 +1,7 @@
 package com.pasciitools.pasciifinance.batch.easywebcrawler;
 
-import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.service.AccountService;
-import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.remote.RemoteWebDriver;
@@ -19,25 +17,26 @@ import org.springframework.batch.item.UnexpectedInputException;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.text.DecimalFormat;
 import java.text.NumberFormat;
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
 
 public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
 
 
-    private AccountService accountService;
+    private final AccountService accountService;
     private final NumberFormat nfCAD = NumberFormat.getCurrencyInstance(Locale.CANADA);
-    private final NumberFormat pctFormatter = NumberFormat.getPercentInstance(Locale.CANADA);
-    private final DecimalFormat decPctFormatter = (DecimalFormat) DecimalFormat.getPercentInstance(Locale.CANADA);
     private WebDriver driver;
     private WebDriverWait wait;
-    private Logger log = LoggerFactory.getLogger(TDEasyWebItemReader.class);
+    private final Logger log = LoggerFactory.getLogger(TDEasyWebItemReader.class);
 
-    private String webBrokerURL;
+    private final String webBrokerURL;
 
-    private String userName;
-    private String password;
+    private final String userName;
+    private final String password;
 
     private List<AccountEntry> entries;
     private Iterator<AccountEntry> iter;
@@ -120,22 +119,19 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
     }
 
     private List<AccountEntry> collectData (List<WebElement> bankingRows) throws InterruptedException {
-        List<AccountEntry> entries= new ArrayList<>();
-        var zero = new BigDecimal(0);
-        Date currentDate = new Date();
+        List<AccountEntry> aEntries= new ArrayList<>();
+        var currentDate = LocalDateTime.now();
 
         //starting at i == 1 because the first row is a header row
         //skipping last 2 rows as well as they're either a summary row or the row to open a new account
-        for (int i = 1; i < bankingRows.size() - 2; i++) {
+        for (var i = 1; i < bankingRows.size() - 2; i++) {
             WebElement row = bankingRows.get(i);
             WebElement accountSpan = row.findElement(By.tagName("span"));
-            log.info(String.format("accountSpan text: %s", accountSpan.getText()));
             WebElement accountIdSpan = accountSpan.findElement(By.tagName("span")); //yes, for some reason the span is nested within another span...
-            log.info(String.format("accountIdSpan text: %s", accountIdSpan.getText()));
-            AccountEntry accountEntry = new AccountEntry();
+            var accountEntry = new AccountEntry();
             String accountNumber = accountIdSpan.getText().replace("›","").trim();
             String cleanAccountNumber = cleanTextContent(accountNumber);
-            Account acc = accountService.getAccountFromAccountNumber(cleanAccountNumber);
+            var acc = accountService.getAccountFromAccountNumber(cleanAccountNumber);
             if (acc != null)
                 accountEntry.setAccount(acc);
             else
@@ -156,10 +152,10 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
                 accountEntry.setMarketValue(0);
             }
             accountEntry.setEntryDate(currentDate);
-            entries.add(accountEntry);
+            aEntries.add(accountEntry);
         }
         log.info("Finished parsing for all Web Broker details");
-        return entries;
+        return aEntries;
     }
 
     private String cleanTextContent(String text) {
@@ -195,7 +191,7 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
     }
 
     public WebDriver getDriver () throws MalformedURLException {
-        ChromeOptions options = new ChromeOptions();
+        var options = new ChromeOptions();
 
         return new RemoteWebDriver(
                 new URL("http://127.0.0.1:9515"),
@@ -210,14 +206,14 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
             result = nfCAD.parse(totalValueDiv.getText()).doubleValue();
         } catch (java.text.ParseException | TimeoutException e) {
             String parsedValue = totalValueDiv != null ? totalValueDiv.getText() : "null";
-            String message = String.format("Failed to get value of element %s. " +
+            var message = String.format("Failed to get value of element %s. " +
                     "Value found for `By` was %s. " +
                     "Failed to retrieve because of %s. Returning NaN.",
                     by.toString(), parsedValue, e.getMessage());
             log.warn(message, e);
             result = Double.NaN;
         } catch (NoSuchElementException e) {
-            String message = String.format("Could not find element %s.", by.toString());
+            var message = String.format("Could not find element %s.", by.toString());
             throw new NoSuchElementException(message, e);
         }
         return result;
@@ -237,7 +233,7 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
         try {
             we.click();
         } catch (NoSuchElementException e){
-            log.error(String.format("Could not find the element: %s.\nNested Exception: %s", we.toString(), e.getMessage()), e);
+            log.error(String.format("Could not find the element: %s.%nNested Exception: %s", we.toString(), e.getMessage()), e);
 
         }
     }

@@ -32,35 +32,13 @@ public class RestService {
 
     @GetMapping("/currentValue")
     public String getCurrentValue() {
-        String result = "$0";
+        var result = "$0";
         var now = LocalDateTime.now();
         var latestEntries = entryRepo.getLatestResults(now);
-        if (latestEntries != null && latestEntries.size() > 0) {
-            Date latestMaxDate = latestEntries.get(0).getEntryDate();
-            Calendar cal = Calendar.getInstance();
-            cal.setTime(latestMaxDate);
-            cal.add(Calendar.DAY_OF_YEAR, -1);
+        if (latestEntries != null && !latestEntries.isEmpty()) {
             var previousEntries = entryRepo.getLatestResults(now.minus(1, ChronoUnit.DAYS));
-            var accountIds = new ArrayList<Long>();
-
-
-            BigDecimal previousBalance = new BigDecimal(0);
-            for (AccountEntry entry : previousEntries) {
-                if (entry.getAccount().isJointAccount()) {
-                    previousBalance = previousBalance.add(entry.getMarketValue().divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP));
-                } else {
-                    previousBalance = previousBalance.add(entry.getMarketValue());
-                }
-            }
-
-            BigDecimal currentBalance = new BigDecimal(0);
-            for (AccountEntry entry : latestEntries) {
-                if (entry.getAccount().isJointAccount()) {
-                    currentBalance = currentBalance.add(entry.getMarketValue().divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP));
-                } else {
-                    currentBalance = currentBalance.add(entry.getMarketValue());
-                }
-            }
+            var previousBalance = getBalanceFromListOfEntries(previousEntries);
+            var currentBalance = getBalanceFromListOfEntries(latestEntries);
 
             if (currentBalance.doubleValue() > previousBalance.doubleValue()) {
                 result = currentBalance.doubleValue() != 0.0 ? String.format("%s up from %s", getFormattedAsCurrency(currentBalance), getFormattedAsCurrency(previousBalance)) : result;
@@ -74,12 +52,25 @@ public class RestService {
         }
     }
 
+    private BigDecimal getBalanceFromListOfEntries (List<AccountEntry> entries) {
+        var balance = new BigDecimal(0);
+        if (entries != null) {
+            for (AccountEntry entry : entries) {
+                if (entry.getAccount().isJointAccount()) {
+                    balance = balance.add(entry.getMarketValue().divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP));
+                } else {
+                    balance = balance.add(entry.getMarketValue());
+                }
+            }
+        }
+        return balance;
+    }
+
 
     @GetMapping("/time_series_summary")
     public List<SummarizedAccountEntry> getTimeSeriesSummary(@RequestParam
                                                                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDate startDate) {
-        List<SummarizedAccountEntry> tsEntries = entryRepo.findAccountEntriesByEntryDateAfter(startDate);
-        return tsEntries;
+        return entryRepo.findAccountEntriesByEntryDateAfter(startDate);
     }
 
     private String getFormattedAsCurrency(BigDecimal dec) {
@@ -127,7 +118,7 @@ public class RestService {
             entriesSaved.add(iter.next());
         }
         if (entriesSaved.size() != entries.size()) {
-            log.error("Not all entries submitted were saved. Please investigate:\n\t Submitted:\n" + entries + "\n\nSaved:\n" + entriesSaved);
+            log.error("Not all entries submitted were saved. Please investigate:%n%t Submitted:%n" + entries + "%n%nSaved:%n" + entriesSaved);
         } else {
             if (log.isDebugEnabled())
                 log.debug(String.format("All %s entries submitted were saved.", entriesSaved.size()));
@@ -150,14 +141,14 @@ public class RestService {
         6. Compute percentages of investment buckets (i.e not cash or cash equiv)
          */
 
-        BigDecimal cadEqtValue = new BigDecimal(0);
-        BigDecimal usEqtValue = new BigDecimal(0);
-        BigDecimal intEqtyValue = new BigDecimal(0);
+        var cadEqtValue = new BigDecimal(0);
+        var usEqtValue = new BigDecimal(0);
+        var intEqtyValue = new BigDecimal(0);
 
-        BigDecimal fixedIncomeValue = new BigDecimal(0);
+        var fixedIncomeValue = new BigDecimal(0);
 
-        BigDecimal cashValue = new BigDecimal(0);
-        BigDecimal otherAssetsValue = new BigDecimal(0);
+        var cashValue = new BigDecimal(0);
+        var otherAssetsValue = new BigDecimal(0);
 
         var now = LocalDateTime.now();
 
@@ -189,7 +180,7 @@ public class RestService {
         //Step 4 //make this a unit test
 
         //Step 5
-        BigDecimal currentBalance = new BigDecimal(0);
+        var currentBalance = new BigDecimal(0);
         for (AccountEntry entry : latestTotals) {
             if (entry.getCanadianEqtPct() != null) {
                 if (entry.getAccount().isJointAccount()) {
