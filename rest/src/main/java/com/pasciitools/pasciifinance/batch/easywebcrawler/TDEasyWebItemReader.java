@@ -42,10 +42,11 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
     private Iterator<AccountEntry> iter;
 
     @Override
-    public AccountEntry read() throws UnexpectedInputException, ParseException, NonTransientResourceException {
+    public AccountEntry read() throws UnexpectedInputException, ParseException, MalformedURLException, InterruptedException {
 
         if (entries == null) {
             log.debug("Collecting all the data from WebBroker. This part will take a while. Subsequent steps will be much faster.");
+            String killMessage = "Killing job.";
             try {
                 driver = getDriver();
                 loginDriver();
@@ -69,31 +70,20 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
                 }
             } catch (MalformedURLException e) {
                 String message = "URL was malformed. Could not establish connection. " +
-                        "Throwing RuntimeException to kill the process.";
-                log.error(message, e);
-                if (driver != null) {
-                    driver.quit();
-                    driver = null;
-                }
-                throw new NonTransientResourceException(message, e);
+                        killMessage;
+                logAndKillDriver(e, message);
+                return null;
             } catch (InterruptedException e) {
                 String message = "Thread interrupted during execution. " +
-                        "Throwing RuntimeException to kill the process.";
-                log.error(message, e);
-                if (driver != null) {
-                    driver.quit();
-                    driver = null;
-                }
-                throw new NonTransientResourceException(message, e);
+                        killMessage;
+                logAndKillDriver(e, message);
+                Thread.currentThread().interrupt();
+                return null;
             } catch (TimeoutException e) {
                 String message = "Timeout Exception during execution. " +
-                        "Throwing RuntimeException to kill the process.";
-                log.error(message, e);
-                if (driver != null) {
-                    driver.quit();
-                    driver = null;
-                }
-                throw new NonTransientResourceException(message, e);
+                        killMessage;
+                logAndKillDriver(e, message);
+                return null;
             }
         }
 
@@ -105,6 +95,14 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
             entries = null;
         }
         return nextEntry;
+    }
+
+    private void logAndKillDriver (Exception e, String message) {
+        log.error(message, e);
+        if (driver != null) {
+            driver.quit();
+            driver = null;
+        }
     }
 
     public TDEasyWebItemReader(String userName, String password, AccountService accountService, String url) {
@@ -187,6 +185,8 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
         var byUserName101 = By.id("username101");
         boolean useUserName100 = !driver.findElements(byUserName100).isEmpty();
         WebElement usernameField = useUserName100 ? driver.findElement(byUserName100) : driver.findElement(byUserName101);
+        String message = String.format("Using field '%s' of tag name <%s /> to inject data", useUserName100 ? "username100" : "username101", usernameField.getTagName());
+        log.info(message);
         WebElement passwordField = driver.findElement(By.id("password"));
         usernameField.sendKeys(userName);
         passwordField.sendKeys(password);
