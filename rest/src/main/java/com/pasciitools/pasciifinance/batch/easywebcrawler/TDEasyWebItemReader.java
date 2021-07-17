@@ -183,7 +183,10 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
 
     private void loginDriver () {
         driver.get(webBrokerURL);
-        WebElement usernameField = driver.findElement(By.id("username100"));
+        var byUserName100 = By.id("username100");
+        var byUserName101 = By.id("username101");
+        boolean useUserName100 = !driver.findElements(byUserName100).isEmpty();
+        WebElement usernameField = useUserName100 ? driver.findElement(byUserName100) : driver.findElement(byUserName101);
         WebElement passwordField = driver.findElement(By.id("password"));
         usernameField.sendKeys(userName);
         passwordField.sendKeys(password);

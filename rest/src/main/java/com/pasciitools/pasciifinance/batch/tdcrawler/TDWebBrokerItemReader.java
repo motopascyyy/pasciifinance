@@ -63,7 +63,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
                 wait = new WebDriverWait(driver, 10);
                 WebElement dropDownCarret = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className(CARRET)));
                 log.debug("Login successful. Proceeding to data collection.");
-                if (driver.findElement(By.id("markAsReadAndDismiss")) != null) {
+                if (driver.findElements(By.id("markAsReadAndDismiss")).size() > 0) {
                     click(driver.findElement(By.id("markAsReadAndDismiss")));
                     log.info("There was a message that had to be dismissed. Cleared this item so that we could proceed");
                 }
@@ -211,7 +211,10 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
 
     private void loginDriver () {
         driver.get(webBrokerURL);
-        WebElement usernameField = driver.findElement(By.id("username100"));
+        var byUserName100 = By.id("username100");
+        var byUserName101 = By.id("username101");
+        boolean useUserName100 = !driver.findElements(byUserName100).isEmpty();
+        WebElement usernameField = useUserName100 ? driver.findElement(byUserName100) : driver.findElement(byUserName101);
         WebElement passwordField = driver.findElement(By.id("password"));
         usernameField.sendKeys(userName);
         passwordField.sendKeys(password);
