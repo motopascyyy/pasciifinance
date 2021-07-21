@@ -52,6 +52,11 @@ public class RestService {
         }
     }
 
+    @GetMapping("/latestEntries")
+    public List<AccountEntry> getLatestEntries () {
+        return entryRepo.getLatestResults(LocalDateTime.now());
+    }
+
     private BigDecimal getBalanceFromListOfEntries (List<AccountEntry> entries) {
         var balance = new BigDecimal(0);
         if (entries != null) {
