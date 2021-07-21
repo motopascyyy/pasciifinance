@@ -116,6 +116,11 @@ public class RestService {
 
     @PostMapping("/entries")
     public List<AccountEntry> newEntries (@RequestBody List<AccountEntry> entries) {
+        //TODO: change the way I process dates. Right now, it's not interpreting the TZ so I need an override hack like below
+        LocalDateTime now = LocalDateTime.now();
+        for (AccountEntry entry : entries) {
+            entry.setEntryDate(now);
+        }
         Iterable<AccountEntry> iterable = entryRepo.saveAll(entries);
         Iterator<AccountEntry> iter = iterable.iterator();
         List<AccountEntry> entriesSaved = new ArrayList<>();
