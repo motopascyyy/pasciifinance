@@ -4,13 +4,14 @@ let modal;
 
 function getAccounts () {
     const Http = new XMLHttpRequest();
-    const url='/accounts?isActive=true';
+    const url='/latestEntries';
     Http.open("GET", url);
     Http.send();
 
     Http.onreadystatechange = (e) => {
         if (Http.readyState === 4 && Http.status === 200) {
-            accounts = JSON.parse(Http.responseText);
+            let accountEntries = JSON.parse(Http.responseText);
+            accounts = getAccountsFromEntries(accountEntries);
             let formEntryDiv = document.getElementById("form_entry_area");
             formEntryDiv.innerHTML = '';
             for (let acc of accounts) {
@@ -28,11 +29,11 @@ function getAccounts () {
                 let labelContainerDiv = createEntryContainerDiv();
                 labelContainerDiv.appendChild(label);
 
-                let bvField = createInput("Book Value", "bv_input", bvId);
+                let bvField = createInput("Book Value: " + acc.bookValue, "bv_input", bvId);
                 let bvContainerDiv = createEntryContainerDiv();
                 bvContainerDiv.appendChild(bvField);
 
-                let mvField = createInput("Market Value", "mv_input", mvId);
+                let mvField = createInput("Market Value: " + acc.marketValue, "mv_input", mvId);
                 mvField.addEventListener('input', function (evt) {
                     updateBookValue(bvId, mvField.value, growthField.value);
                 });
@@ -55,6 +56,17 @@ function getAccounts () {
             form = document.getElementById("my_form");
         }
     }
+}
+
+function getAccountsFromEntries (accountEntries) {
+    let result = [];
+    for (let entry of accountEntries) {
+        let account = entry.account;
+        account.bookValue = entry.bookValue;
+        account.marketValue = entry.marketValue;
+        result.push(account);
+    }
+    return result;
 }
 
 function createInput (placeholderText, className, elementId) {
