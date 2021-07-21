@@ -195,7 +195,7 @@ function collectEntries () {
             if (accEntry == null) {
                 accEntry = createNewEntry(accountId);
             }
-            if (inputValueNum !== NaN) { //TODO FIX THIS
+            if (!isNaN(inputValueNum)) {
                 if (valueType === "mv") {
                     accEntry.marketValue = inputValueNum
                 } else if (valueType === "bv") {
