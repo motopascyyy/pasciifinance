@@ -7,19 +7,17 @@ import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.remote.RemoteWebDriver;
+import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.item.ItemReader;
-import org.springframework.batch.item.NonTransientResourceException;
 import org.springframework.batch.item.ParseException;
-import org.springframework.batch.item.UnexpectedInputException;
 
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -29,31 +27,29 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
 
     private AccountService accountService;
     private final NumberFormat nfCAD = NumberFormat.getCurrencyInstance(Locale.CANADA);
-    private final NumberFormat pctFormatter = NumberFormat.getPercentInstance(Locale.CANADA);
-    private final DecimalFormat decPctFormatter = (DecimalFormat) DecimalFormat.getPercentInstance(Locale.CANADA);
     private WebDriver driver;
     private WebDriverWait wait;
-    private Logger log = LoggerFactory.getLogger(TDWebBrokerItemReader.class);
+    private final Logger log = LoggerFactory.getLogger(TDWebBrokerItemReader.class);
 
-    private String webBrokerURL;
+    private final String webBrokerURL;
 
-    private String userName;
-    private String password;
+    private final String userName;
+    private final String password;
 
-    private final String CARRET = "td-wb-dropdown-toggle__caret";
-    private final String ACTIVE_CARRET = "td-wb-dropdown-toggle--active";
-    private final String PARENT_XPATH = "./..";
-    private final String CHILDREN_XPATH_ONE_DOWN = "./*";
-    private final String CHILDREN_XPATH_ENTIRE_LIST = ".//*";
-    private final String webBrokerDropdownID = "td-wb-dropdown-account-selector";
-    private final String wbBookValueFieldClass = "td-wb-holdings-di-totals__value td-wb-holdings-di-totals__value--book";
+    private static final String CARET = "td-wb-dropdown-toggle__caret";
+    private static final String PARENT_XPATH = "./..";
+    private static final String CHILDREN_XPATH_ONE_DOWN = "./*";
+    private static final String CHILDREN_XPATH_ENTIRE_LIST = ".//*";
     private final By holdingTab = By.cssSelector("td-wb-tab[tdwbtabstatename=\"page.account.holdings\"]");
+    private static final String TWO_FA_DIALOG_ID = "ngdialog1";
 
     private List<AccountEntry> entries;
     private Iterator<AccountEntry> iter;
 
     @Override
     public AccountEntry read() throws ParseException, MalformedURLException, InterruptedException {
+        if (userName == null || password == null)
+            throw new InterruptedException("Credentials not provided. Crashing execution");
 
         if (entries == null) {
             log.debug("Collecting all the data from WebBroker. This part will take a while. Subsequent steps will be much faster.");
@@ -62,14 +58,11 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
                 driver = getDriver();
                 loginDriver();
                 wait = new WebDriverWait(driver, 10);
-                WebElement dropDownCarret = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className(CARRET)));
+                waitFor2FA();
+                WebElement dropDownCarret = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className(CARET)));
                 log.debug("Login successful. Proceeding to data collection.");
-                if (driver.findElements(By.id("markAsReadAndDismiss")).size() > 0) {
-                    click(driver.findElement(By.id("markAsReadAndDismiss")));
-                    log.info("There was a message that had to be dismissed. Cleared this item so that we could proceed");
-                }
+                dismissMessageDialog();
                 click(dropDownCarret);
-
                 WebElement divOfAccounts = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("td-wb-dropdown__panel")));
                 List<WebElement> accountDivs = divOfAccounts.findElements(By.xpath(CHILDREN_XPATH_ONE_DOWN));
                 entries = collectData(accountDivs);
@@ -83,18 +76,18 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
                 String message = "URL was malformed. Could not establish connection. " +
                         killMessage;
                 logAndKillDriver(e, message);
-                return null;
+                throw new MalformedURLException(message);
             } catch (InterruptedException e) {
                 String message = "Thread interrupted during execution. " +
                         killMessage;
                 logAndKillDriver(e, message);
                 Thread.currentThread().interrupt();
-                return null;
+                throw new InterruptedException(message);
             } catch (TimeoutException e) {
                 String message = "Timeout Exception during execution. " +
                         killMessage;
                 logAndKillDriver(e, message);
-                return null;
+                throw new TimeoutException(message, e);
             }
         }
 
@@ -116,24 +109,37 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
         }
     }
 
+    private void waitFor2FA () {
+
+        if (!driver.findElements(By.id(TWO_FA_DIALOG_ID)).isEmpty()) {
+            var twoFAWait = new WebDriverWait(driver, 120, 1000);
+            twoFAWait.until((ExpectedCondition<Boolean>) d -> (d.findElements(By.id(TWO_FA_DIALOG_ID)).isEmpty()));
+        }
+    }
+
+    private void dismissMessageDialog() {
+        if (!driver.findElements(By.id("markAsReadAndDismiss")).isEmpty()) {
+            click(driver.findElement(By.id("markAsReadAndDismiss")));
+            log.info("There was a message that had to be dismissed. Cleared this item so that we could proceed");
+        }
+    }
+
     public TDWebBrokerItemReader(String userName, String password, AccountService accountService, String url) {
 
         this.userName = userName;
         this.password = password;
         this.accountService = accountService;
         this.webBrokerURL = url;
-        if (userName == null || password == null)
-            throw new RuntimeException("Credentials not provided. Crashing execution");
 
     }
 
     private List<AccountEntry> collectData (List<WebElement> accountDivs) throws InterruptedException {
-        List<AccountEntry> entries= new ArrayList<>();
+        List<AccountEntry> accountEntries= new ArrayList<>();
         var zero = new BigDecimal(0);
         var currentDate = LocalDateTime.now();
         for (int i = 0; i < accountDivs.size(); i++) {
             if (i != 0)
-                click(driver.findElement(By.className(CARRET)));
+                click(driver.findElement(By.className(CARET)));
             String dropdownRowId = "td-wb-dropdown-option-" + i;
             WebElement containerDiv = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("td-wb-dropdown__panel")));
             click(containerDiv.findElement(By.id(dropdownRowId)));
@@ -149,7 +155,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
              *
              * There are ways of embedding a JS based option but I've avoided that for now.
              */
-            Thread.sleep(500l);
+            Thread.sleep(500L);
 
             accountEntry.setMarketValue(getValue(By.className("td-wb-account-totals__total-balance-amount")));
             if (!accountEntry.getMarketValue().equals(zero)) {
@@ -167,17 +173,15 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
                 accountEntry.setMarketValue(0);
             }
             accountEntry.setEntryDate(currentDate);
-            entries.add(accountEntry);
+            accountEntries.add(accountEntry);
         }
         log.info("Finished parsing for all Web Broker details");
-        return entries;
+        return accountEntries;
     }
 
     private void assignAllocations (AccountEntry accountEntry) {
         var allocationMap = getAllAllocationContainers();
-        var iter = allocationMap.entrySet().iterator();
-        while (iter.hasNext()) {
-            var entry = iter.next();
+        for (Map.Entry<String, BigDecimal> entry : allocationMap.entrySet()) {
             var label = entry.getKey();
             var value = entry.getValue();
             switch (label) {
@@ -268,7 +272,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
             try {
                 List<WebElement> elements = el.findElements(By.xpath(CHILDREN_XPATH_ENTIRE_LIST));
                 String key = "";
-                BigDecimal value = new BigDecimal(0.0);
+                BigDecimal value = BigDecimal.ZERO;
                 for (int i = 0; i < elements.size(); i++) {
                     WebElement elmnt = elements.get(i);
                     String className = elmnt.getAttribute("class");
@@ -290,10 +294,6 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
         return allocationPctMap;
     }
 
-    private double getBookValue () {
-        String selector = ".td-wb-holdings-di-totals__value--book";
-        return getValue(By.cssSelector(selector));
-    }
 
     private void click(By by) {
         try {
@@ -308,7 +308,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
         try {
             we.click();
         } catch (NoSuchElementException e){
-            log.error(String.format("Could not find the element: %s.\nNested Exception: %s", we.toString(), e.getMessage()), e);
+            log.error(String.format("Could not find the element: %s.%nNested Exception: %s", we.toString(), e.getMessage()), e);
 
         }
     }

@@ -5,6 +5,7 @@ import com.pasciitools.pasciifinance.common.service.AccountService;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.remote.RemoteWebDriver;
+import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
@@ -41,6 +42,9 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
     private List<AccountEntry> entries;
     private Iterator<AccountEntry> iter;
 
+    private static final String TWO_FA_DIALOG_ID = "ngdialog1";
+
+
     @Override
     public AccountEntry read() throws UnexpectedInputException, ParseException, MalformedURLException, InterruptedException {
 
@@ -51,6 +55,7 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
                 driver = getDriver();
                 loginDriver();
                 wait = new WebDriverWait(driver, 10);
+                waitFor2FA();
                 boolean redirectCompleted = wait.until(ExpectedConditions.urlToBe("https://easyweb.td.com/waw/ezw/webbanking"));
                 if (redirectCompleted){
                     driver.switchTo().frame("tddetails");
@@ -72,18 +77,18 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
                 String message = "URL was malformed. Could not establish connection. " +
                         killMessage;
                 logAndKillDriver(e, message);
-                return null;
+                throw new MalformedURLException(message);
             } catch (InterruptedException e) {
                 String message = "Thread interrupted during execution. " +
                         killMessage;
                 logAndKillDriver(e, message);
                 Thread.currentThread().interrupt();
-                return null;
+                throw new InterruptedException(message);
             } catch (TimeoutException e) {
                 String message = "Timeout Exception during execution. " +
                         killMessage;
                 logAndKillDriver(e, message);
-                return null;
+                throw new TimeoutException(message, e);
             }
         }
 
@@ -102,6 +107,14 @@ public class TDEasyWebItemReader implements ItemReader<AccountEntry> {
         if (driver != null) {
             driver.quit();
             driver = null;
+        }
+    }
+
+    private void waitFor2FA () {
+
+        if (!driver.findElements(By.id(TWO_FA_DIALOG_ID)).isEmpty()) {
+            var twoFAWait = new WebDriverWait(driver, 120, 1000);
+            twoFAWait.until((ExpectedCondition<Boolean>) d -> (d.findElements(By.id(TWO_FA_DIALOG_ID)).isEmpty()));
         }
     }
 
