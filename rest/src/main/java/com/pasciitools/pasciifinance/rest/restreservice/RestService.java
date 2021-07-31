@@ -16,6 +16,8 @@ import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -117,9 +119,11 @@ public class RestService {
     @PostMapping("/entries")
     public List<AccountEntry> newEntries (@RequestBody List<AccountEntry> entries) {
         //TODO: change the way I process dates. Right now, it's not interpreting the TZ so I need an override hack like below
-        LocalDateTime now = LocalDateTime.now();
         for (AccountEntry entry : entries) {
-            entry.setEntryDate(now);
+            ZonedDateTime zdt = ZonedDateTime.of(entry.getEntryDate(), ZoneId.of("GMT"));
+            ZoneId local = ZoneId.systemDefault();
+            ZonedDateTime localTime = zdt.withZoneSameInstant(local);
+            entry.setEntryDate(localTime.toLocalDateTime());
         }
         Iterable<AccountEntry> iterable = entryRepo.saveAll(entries);
         Iterator<AccountEntry> iter = iterable.iterator();
