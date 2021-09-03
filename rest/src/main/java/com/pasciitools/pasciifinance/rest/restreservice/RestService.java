@@ -1,15 +1,19 @@
 package com.pasciitools.pasciifinance.rest.restreservice;
 
+import com.pasciitools.pasciifinance.common.dto.EntryAllocation;
 import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.entity.SummarizedAccountEntry;
+import com.pasciitools.pasciifinance.common.exception.NumberOutOfRangeException;
 import com.pasciitools.pasciifinance.common.repository.AccountEntryRepository;
 import com.pasciitools.pasciifinance.common.repository.AccountRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -216,5 +220,18 @@ public class RestService {
         totalAllocationMap.put("Other Assets", otherAssetsValue.divide(currentBalance, RoundingMode.HALF_UP).doubleValue());
 
         return totalAllocationMap;
+    }
+
+    @PutMapping("/latest-entry-percentages")
+    public AccountEntry updateLatestEntryPercentages (@RequestBody EntryAllocation entry) {
+        Account account = accountRepo.findById(entry.getAccountId().longValue());
+        AccountEntry latestEntry = entryRepo.findTopByAccountEqualsOrderByIdDesc(account);
+
+        try {
+            latestEntry = entry.updateEntry(latestEntry);
+        } catch (NumberOutOfRangeException e) {
+            throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED, e.getMessage(), e);
+        }
+        return entryRepo.save(latestEntry);
     }
 }
