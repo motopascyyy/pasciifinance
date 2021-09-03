@@ -1,5 +1,6 @@
 package com.pasciitools.pasciifinance.common.repository;
 
+import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.entity.SummarizedAccountEntry;
 import org.springframework.data.jpa.repository.Query;
@@ -110,5 +111,7 @@ public interface AccountEntryRepository extends CrudRepository<AccountEntry, Lon
 
     @Query(value= TIME_SERIES_ENTRY_QUERY, nativeQuery = true)
     List<SummarizedAccountEntry> findAccountEntriesByEntryDateAfter(LocalDate startDate);
+
+    AccountEntry findTopByAccountEqualsOrderByIdDesc(Account account);
 
 }
