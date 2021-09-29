@@ -2,7 +2,10 @@ package com.pasciitools.pasciifinance.batch.tdcrawler;
 
 import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
+import com.pasciitools.pasciifinance.common.entity.Security;
+import com.pasciitools.pasciifinance.common.exception.SecurityNotFoundException;
 import com.pasciitools.pasciifinance.common.service.AccountService;
+import com.pasciitools.pasciifinance.common.service.SecurityService;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -16,6 +19,7 @@ import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ParseException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.NumberFormat;
@@ -26,6 +30,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
 
 
     private AccountService accountService;
+    private SecurityService secService;
     private final NumberFormat nfCAD = NumberFormat.getCurrencyInstance(Locale.CANADA);
     private WebDriver driver;
     private WebDriverWait wait;
@@ -53,7 +58,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
 
         if (entries == null) {
             log.debug("Collecting all the data from WebBroker. This part will take a while. Subsequent steps will be much faster.");
-            String killMessage = "Killing job.";
+            String killMessage = "Killing job. Caused by:\n";
             try {
                 driver = getDriver();
                 loginDriver();
@@ -74,12 +79,12 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
                 }
             } catch (MalformedURLException e) {
                 String message = "URL was malformed. Could not establish connection. " +
-                        killMessage;
+                        killMessage + e.getMessage();
                 logAndKillDriver(e, message);
                 throw new MalformedURLException(message);
-            } catch (InterruptedException e) {
+            } catch (InterruptedException | SecurityNotFoundException e) {
                 String message = "Thread interrupted during execution. " +
-                        killMessage;
+                        killMessage + e.getMessage() ;
                 logAndKillDriver(e, message);
                 Thread.currentThread().interrupt();
                 throw new InterruptedException(message);
@@ -124,18 +129,19 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
         }
     }
 
-    public TDWebBrokerItemReader(String userName, String password, AccountService accountService, String url) {
+    public TDWebBrokerItemReader(String userName, String password, AccountService accountService, SecurityService secService, String url) {
 
         this.userName = userName;
         this.password = password;
         this.accountService = accountService;
         this.webBrokerURL = url;
+        this.secService = secService;
 
     }
 
-    private List<AccountEntry> collectData (List<WebElement> accountDivs) throws InterruptedException {
+    private List<AccountEntry> collectData (List<WebElement> accountDivs) throws InterruptedException, SecurityNotFoundException {
         List<AccountEntry> accountEntries= new ArrayList<>();
-        var zero = new BigDecimal(0);
+        var zero = new BigDecimal(0.0);
         var currentDate = LocalDateTime.now();
         for (int i = 0; i < accountDivs.size(); i++) {
             if (i != 0)
@@ -158,7 +164,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
             Thread.sleep(500L);
 
             accountEntry.setMarketValue(getValue(By.className("td-wb-account-totals__total-balance-amount")));
-            if (!accountEntry.getMarketValue().equals(zero)) {
+            if (accountEntry.getMarketValue().compareTo(zero) != 0) {
                 double bookVal = 0;
                 try {
                     bookVal = getValue(By.cssSelector(".td-wb-holdings-di-totals__value--book"));
@@ -167,7 +173,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
                     //This happen when there's nothing in that particular account.
                 }
                 accountEntry.setBookValue(bookVal);
-                assignAllocations(accountEntry);
+                assignAllocationsFromSecurities(accountEntry);
             } else {
                 accountEntry.setBookValue(0);
                 accountEntry.setMarketValue(0);
@@ -177,6 +183,52 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
         }
         log.info("Finished parsing for all Web Broker details");
         return accountEntries;
+    }
+
+    private void assignAllocationsFromSecurities (AccountEntry accountEntry) throws SecurityNotFoundException {
+        var allocationMap = getAllocationsFromHoldings();
+        var canadianEqtAmt = BigDecimal.ZERO;
+        var usEqtAmt = BigDecimal.ZERO;
+        var intEqtAmt = BigDecimal.ZERO;
+        var emergMktEqt = BigDecimal.ZERO;
+        var cadFIAmt = BigDecimal.ZERO;
+        var globalFIAmt = BigDecimal.ZERO;
+        var cashAmt = BigDecimal.ZERO;
+        var otherAmt = BigDecimal.ZERO;
+
+        for (Map.Entry<String, BigDecimal> entry : allocationMap.entrySet()) {
+            var ticker = entry.getKey();
+            var value = entry.getValue();
+            Security sec = secService.getSecurity(ticker);
+            if (sec == null)
+                throw new SecurityNotFoundException(String.format("Could not find security with ticker: '%s'. Please make sure it's added to the DB and then rerun. No data has been committed to the DB.", ticker));
+            canadianEqtAmt = canadianEqtAmt.add(sec.getCanadianEqtPct().multiply(value));
+            usEqtAmt = usEqtAmt.add(sec.getUsEqtPct().multiply(value));
+            intEqtAmt = intEqtAmt.add(sec.getInternationalEqtPct().multiply(value));
+            emergMktEqt = emergMktEqt.add(sec.getEmergingMktsEqtPct().multiply(value));
+            cadFIAmt = cadFIAmt.add(sec.getCadFixedIncomePct().multiply(value));
+            globalFIAmt = globalFIAmt.add(sec.getGlobalFixedIncomePct().multiply(value));
+            otherAmt = otherAmt.add(sec.getOtherPct().multiply(value));
+        }
+
+        cashAmt = accountEntry.getMarketValue().subtract(sumAll(canadianEqtAmt, usEqtAmt, intEqtAmt, emergMktEqt, cadFIAmt, globalFIAmt, otherAmt));
+
+        accountEntry.setCanadianEqtPct(canadianEqtAmt.divide(accountEntry.getMarketValue(), RoundingMode.HALF_UP));
+        accountEntry.setUsEqtPct(usEqtAmt.divide(accountEntry.getMarketValue(), RoundingMode.HALF_UP));
+        accountEntry.setInternationalEqtPct(intEqtAmt.divide(accountEntry.getMarketValue(), RoundingMode.HALF_UP));
+        accountEntry.setEmergingMktsEqtPct(emergMktEqt.divide(accountEntry.getMarketValue(), RoundingMode.HALF_UP));
+        accountEntry.setCadFixedIncomePct(cadFIAmt.divide(accountEntry.getMarketValue(), RoundingMode.HALF_UP));
+        accountEntry.setGlobalFixedIncomePct(globalFIAmt.divide(accountEntry.getMarketValue(), RoundingMode.HALF_UP));
+        accountEntry.setCashPct(cashAmt.divide(accountEntry.getMarketValue(), RoundingMode.HALF_UP));
+        accountEntry.setOtherPct(otherAmt.divide(accountEntry.getMarketValue(), RoundingMode.HALF_UP));
+    }
+
+    private BigDecimal sumAll(BigDecimal... vals) {
+        var result = BigDecimal.ZERO;
+        for (BigDecimal d : vals) {
+            result = result.add(d);
+        }
+        return result;
     }
 
     private void assignAllocations (AccountEntry accountEntry) {
@@ -251,6 +303,39 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
         } catch (NoSuchElementException e) {
             String message = String.format("Could not find element %s.", by.toString());
             throw new NoSuchElementException(message, e);
+        }
+        return result;
+    }
+
+    private Map<String, BigDecimal> getAllocationsFromHoldings () {
+        Map<String, BigDecimal> allocationPctMap = new HashMap<>();
+        By datatableScrollPane = By.cssSelector("#td-wb-content > ui-view > td-wb-accounts > div > td-wb-page-content > td-wb-min-height-panel > div > div > td-wb-holdings > td-wb-holdings-di > div > td-wb-holdings-di-table > div > ngx-datatable > div > datatable-body > datatable-selection > datatable-scroller");
+        var we = wait.until(ExpectedConditions.visibilityOfElementLocated(datatableScrollPane));
+        List<WebElement> holdingRows = we.findElements(By.xpath(CHILDREN_XPATH_ONE_DOWN));
+        for (var row : holdingRows) {
+            allocationPctMap.putAll(parseRow(row));
+        }
+
+        for (Map.Entry<String, BigDecimal> entry : allocationPctMap.entrySet()) {
+            var ticker = entry.getKey();
+            var value = entry.getValue();
+            Security sec = secService.getSecurity(ticker);
+
+        }
+        return allocationPctMap;
+    }
+
+    private Map<String, BigDecimal> parseRow (WebElement row) {
+        var cells = row.findElements(By.cssSelector("datatable-body-cell"));
+        WebElement tickerCell = cells.get(0);
+        WebElement marketValueCell = cells.get(5);
+        String ticker = tickerCell.findElement(By.tagName("a")).getText();
+        String marketValue = marketValueCell.findElement(By.tagName("span")).getText();
+        Map<String, BigDecimal> result = new HashMap<>();
+        try {
+            result.put(ticker, BigDecimal.valueOf(nfCAD.parse(marketValue).doubleValue()));
+        } catch (java.text.ParseException e) {
+            return null;
         }
         return result;
     }

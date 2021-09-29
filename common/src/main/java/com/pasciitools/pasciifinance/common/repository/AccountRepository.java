@@ -1,7 +1,6 @@
 package com.pasciitools.pasciifinance.common.repository;
 
 import com.pasciitools.pasciifinance.common.entity.Account;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
