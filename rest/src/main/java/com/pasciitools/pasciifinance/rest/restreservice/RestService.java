@@ -3,10 +3,12 @@ package com.pasciitools.pasciifinance.rest.restreservice;
 import com.pasciitools.pasciifinance.common.dto.EntryAllocation;
 import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
+import com.pasciitools.pasciifinance.common.entity.Security;
 import com.pasciitools.pasciifinance.common.entity.SummarizedAccountEntry;
 import com.pasciitools.pasciifinance.common.exception.NumberOutOfRangeException;
 import com.pasciitools.pasciifinance.common.repository.AccountEntryRepository;
 import com.pasciitools.pasciifinance.common.repository.AccountRepository;
+import com.pasciitools.pasciifinance.common.repository.SecurityRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +37,9 @@ public class RestService {
 
     @Autowired
     private AccountRepository accountRepo;
+
+    @Autowired
+    private SecurityRepository secRepo;
 
     @GetMapping("/currentValue")
     public String getCurrentValue() {
@@ -233,5 +238,10 @@ public class RestService {
             throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED, e.getMessage(), e);
         }
         return entryRepo.save(latestEntry);
+    }
+
+    @PostMapping("/security")
+    public Iterable<Security> addNewSecurity (@RequestBody List<Security> entries) {
+        return secRepo.saveAll(entries);
     }
 }

@@ -6,6 +6,7 @@ import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.repository.AccountEntryRepository;
 import com.pasciitools.pasciifinance.common.repository.AccountRepository;
 import com.pasciitools.pasciifinance.common.service.AccountService;
+import com.pasciitools.pasciifinance.common.service.SecurityService;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
@@ -44,6 +45,9 @@ public class TDWebBrokerConfiguration {
     @Autowired
     private AccountService accountService;
 
+    @Autowired
+    private SecurityService securityService;
+
     @Value("${webbroker.userName}")
     private String userName;
 
@@ -55,7 +59,7 @@ public class TDWebBrokerConfiguration {
 
     @Bean
     public TDWebBrokerItemReader reader() {
-        return new TDWebBrokerItemReader(userName, password, accountService, webBrokerUrl);
+        return new TDWebBrokerItemReader(userName, password, accountService, securityService, webBrokerUrl);
     }
 
     @Bean
