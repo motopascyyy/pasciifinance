@@ -1,6 +1,6 @@
 
 plugins {
-    id 'org.springframework.boot' version '2.4.3'
+    id 'org.springframework.boot' version '2.5.5'
     id 'io.spring.dependency-management' version '1.0.11.RELEASE'
     id 'java'
 }
@@ -14,16 +14,16 @@ repositories {
 
 dependencies {
     implementation project(':common')
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools:2.5.5'
     implementation 'org.apache.poi:poi:5.0.0'
     implementation 'org.apache.poi:poi-ooxml:5.0.0'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-data-rest'
-    implementation 'org.springframework.batch:spring-batch-core'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa:2.5.5'
+    implementation 'org.springframework.boot:spring-boot-starter-data-rest:2.5.5'
+    implementation 'org.springframework.batch:spring-batch-core:4.3.3'
     implementation 'org.seleniumhq.selenium:selenium-java:3.141.59'
-    implementation 'com.github.ulisesbocchio:jasypt-spring-boot:3.0.3'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    runtimeOnly 'com.h2database:h2'
+    implementation 'com.github.ulisesbocchio:jasypt-spring-boot:3.0.4'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test:2.5.5'
+    runtimeOnly 'com.h2database:h2:1.4.200'
 }
 
 test {
