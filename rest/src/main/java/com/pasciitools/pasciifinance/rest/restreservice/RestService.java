@@ -94,6 +94,12 @@ public class RestService {
         return nfCAD.format(dec.doubleValue());
     }
 
+    @GetMapping("/time_series_summary/{accountId}")
+    public List<SummarizedAccountEntry> getTimeSeriesSummaryForAccount(@PathVariable
+                                                             Long accountId) {
+        return entryRepo.findAccountEntriesForAccountByEntryDateAfter(accountId);
+    }
+
     @GetMapping("/accounts")
     public List<Account> getAccounts (@RequestParam boolean isActive) {
         return accountRepo.findAllByActive(isActive);

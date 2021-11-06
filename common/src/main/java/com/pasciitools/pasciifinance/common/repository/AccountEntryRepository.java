@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -109,8 +110,77 @@ public interface AccountEntryRepository extends CrudRepository<AccountEntry, Lon
             "order by " +
             "   e_date asc";
 
+
+    String TIME_SERIES_SPECIFIC_ACCOUNT_ENTRY_QUERY =
+            "select " +
+                    "   e_date as entryDate, " +
+                    "   sum(coalesce(BOOK_VALUE, PREVIOUS_BOOK_VALUE)) as bookValue, " +
+                    "   sum(coalesce(MARKET_VALUE, PREVIOUS_MARKET_VALUE)) as marketValue " +
+                    "from " +
+                    "   ( " +
+                    "      select " +
+                    "         dates.e_date, " +
+                    "         acc_id, " +
+                    "         entry_id, " +
+                    "         book_value, " +
+                    "         LAG(book_value) OVER ( " +
+                    "            partition by dates.acc_id " +
+                    "            order by " +
+                    "               dates.e_date " +
+                    "         ) as previous_book_value, " +
+                    "         market_value, " +
+                    "         LAG(market_value) OVER ( " +
+                    "            partition by dates.acc_id " +
+                    "            order by " +
+                    "               dates.e_date " +
+                    "         ) as previous_market_value " +
+                    "      from " +
+                    "         ( " +
+                    "            select " +
+                    "               distinct to_char(entry_date, 'yyyy-mm') as e_date, " +
+                    "               accts.id as acc_id " +
+                    "            from " +
+                    "               account_entry " +
+                    "               cross join ( " +
+                    "                  select " +
+                    "                     id " +
+                    "                  from " +
+                    "                     account " +
+                    "                    where id = ? " +
+                    "               ) accts " +
+                    "         ) dates " +
+                    "         left join ( " +
+                    "            select " +
+                    "               lae.ACCOUNT_ID, " +
+                    "               lae.E_DATE, " +
+                    "               lae.ENTRY_ID, " +
+                    "               CASE " +
+                    "                  WHEN JOINT_ACCOUNT = 'TRUE' THEN BOOK_VALUE / 2 " +
+                    "                  ELSE BOOK_VALUE " +
+                    "               END as BOOK_VALUE, " +
+                    "               CASE " +
+                    "                  WHEN JOINT_ACCOUNT = 'TRUE' THEN MARKET_VALUE / 2 " +
+                    "                  ELSE MARKET_VALUE " +
+                    "               END as MARKET_VALUE " +
+                    "            from " +
+                    "               LATEST_WEEKLY_ACCOUNT_ENTRY lae " +
+                    "               inner join account_entry ae on lae.ENTRY_ID = ae.id " +
+                    "               inner join account acc on ae.account_id = acc.id " +
+                    "            where " +
+                    "               acc.ID = ? " +
+                    "         ) entries on dates.e_date = entries.e_date " +
+                    "         and dates.acc_id = entries.account_id " +
+                    "   ) " +
+                    "group by " +
+                    "   e_date " +
+                    "order by " +
+                    "   e_date asc";
+
     @Query(value= TIME_SERIES_ENTRY_QUERY, nativeQuery = true)
     List<SummarizedAccountEntry> findAccountEntriesByEntryDateAfter(LocalDate startDate);
+
+    @Query(value= TIME_SERIES_SPECIFIC_ACCOUNT_ENTRY_QUERY, nativeQuery = true)
+    List<SummarizedAccountEntry> findAccountEntriesForAccountByEntryDateAfter (Long accountId, Long sameId);
 
     AccountEntry findTopByAccountEqualsOrderByIdDesc(Account account);
 
