@@ -46,7 +46,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
     private static final String CHILDREN_XPATH_ONE_DOWN = "./*";
     private static final String CHILDREN_XPATH_ENTIRE_LIST = ".//*";
     private final By holdingTab = By.cssSelector("td-wb-tab[tdwbtabstatename=\"page.account.holdings\"]");
-    private static final String TWO_FA_DIALOG_ID = "ngdialog1";
+    private static final String TWO_FA_DIALOG_ID = "mat-dialog-0";
 
     private List<AccountEntry> entries;
     private Iterator<AccountEntry> iter;
@@ -116,9 +116,13 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
 
     private void waitFor2FA () {
 
-        if (!driver.findElements(By.id(TWO_FA_DIALOG_ID)).isEmpty()) {
+        try {
+            wait.until(ExpectedConditions.elementToBeClickable(By.id(TWO_FA_DIALOG_ID)));
+            log.debug("Found 2FA dialog. User expected to enter to manually handle the 2FA code entry since TD still uses SMS like luddites.");
             var twoFAWait = new WebDriverWait(driver, 120, 1000);
             twoFAWait.until((ExpectedCondition<Boolean>) d -> (d.findElements(By.id(TWO_FA_DIALOG_ID)).isEmpty()));
+        } catch(NoSuchElementException | TimeoutException e) {
+            log.debug("Did not find 2FA dialog. Exception means we don't need to deal with 2FA and cna proceed normally.");
         }
     }
 
@@ -266,13 +270,13 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
 
     private void loginDriver () {
         driver.get(webBrokerURL);
-        var byUserName100 = By.id("username100");
+        var byUserName100 = By.id("username");
         var byUserName101 = By.id("username101");
         boolean useUserName100 = !driver.findElements(byUserName100).isEmpty();
         WebElement usernameField = useUserName100 ? driver.findElement(byUserName100) : driver.findElement(byUserName101);
         String message = String.format("Using field '%s' of tag name <%s /> to inject data", useUserName100 ? "username100" : "username101", usernameField.getTagName());
         log.info(message);
-        WebElement passwordField = driver.findElement(By.id("password"));
+        WebElement passwordField = driver.findElement(By.id("uapPassword"));
         usernameField.sendKeys(userName);
         passwordField.sendKeys(password);
         click(By.cssSelector(".form-group > button"));

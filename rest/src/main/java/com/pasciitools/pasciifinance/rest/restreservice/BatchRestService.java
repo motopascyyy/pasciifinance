@@ -4,15 +4,17 @@ import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.exec.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.*;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
+import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
+import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,28 +46,58 @@ public class BatchRestService {
     }
 
     @GetMapping("/scrapeWebBroker")
-    public String invokeWebBrokerScraper() throws Exception {
+    public String invokeWebBrokerScraper()  {
+        try {
+            return scrapeWebBroker();
+        } catch (JobExecutionException e){
+            throw new ResponseStatusException(HttpStatus.FAILED_DEPENDENCY, e.getMessage(), e);
+        }
+    }
+
+    private String scrapeWebBroker () throws JobExecutionException {
         JobParameters jobParameters = new JobParametersBuilder().addLong("time", System.currentTimeMillis())
                 .toJobParameters();
         JobExecution je = jobLauncher.run(loadWebBrokerDataFromChrome, jobParameters);
         String resultString = String.format ("Job %s completed. Status: %s", loadWebBrokerDataFromChrome.getName(), je.getStatus());
+        if (je.getStatus() == BatchStatus.FAILED) {
+            throw new JobExecutionException("Failed to scrape TD Web Broker because");
+        }
         return resultString;
     }
 
     @GetMapping("/scrapeEasyWeb")
     public String invokeEasyWebScraper() throws Exception {
+        try {
+            return scrapeEasyWeb();
+        } catch (JobExecutionException e){
+            throw new ResponseStatusException(HttpStatus.FAILED_DEPENDENCY, e.getMessage(), e);
+        }
+    }
+
+    private String scrapeEasyWeb () throws JobExecutionException {
         JobParameters jobParameters = new JobParametersBuilder().addLong("time", System.currentTimeMillis())
                 .toJobParameters();
         JobExecution je = jobLauncher.run(loadEasyWebDataFromChrome, jobParameters);
         String resultString = String.format ("Job %s completed. Status: %s", loadEasyWebDataFromChrome.getName(), je.getStatus());
+        if (je.getStatus() == BatchStatus.FAILED) {
+            throw new JobExecutionException("Failed to scrape TD Web Broker because");
+        }
         return resultString;
     }
 
     @GetMapping("/pullAllData")
-    public List<String> pullAllData () throws Exception {
+    public List<String> pullAllData () {
         var results = new ArrayList<String>();
-        results.add(invokeEasyWebScraper());
-        results.add(invokeWebBrokerScraper());
+        try {
+            results.add(scrapeEasyWeb());
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.FAILED_DEPENDENCY, e.getMessage(), e);
+        }
+        try {
+            results.add(scrapeWebBroker());
+        } catch (JobExecutionException e){
+            throw new ResponseStatusException(HttpStatus.FAILED_DEPENDENCY, e.getMessage(), e);
+        }
         return results;
     }
 
