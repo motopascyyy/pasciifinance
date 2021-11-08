@@ -146,7 +146,6 @@ public interface AccountEntryRepository extends CrudRepository<AccountEntry, Lon
                     "                     id " +
                     "                  from " +
                     "                     account " +
-                    "                    where id = ? " +
                     "               ) accts " +
                     "         ) dates " +
                     "         left join ( " +
@@ -166,10 +165,9 @@ public interface AccountEntryRepository extends CrudRepository<AccountEntry, Lon
                     "               LATEST_WEEKLY_ACCOUNT_ENTRY lae " +
                     "               inner join account_entry ae on lae.ENTRY_ID = ae.id " +
                     "               inner join account acc on ae.account_id = acc.id " +
-                    "            where " +
-                    "               acc.ID = ? " +
                     "         ) entries on dates.e_date = entries.e_date " +
                     "         and dates.acc_id = entries.account_id " +
+                    "         where dates.acc_id = ? " +
                     "   ) " +
                     "group by " +
                     "   e_date " +
@@ -180,7 +178,7 @@ public interface AccountEntryRepository extends CrudRepository<AccountEntry, Lon
     List<SummarizedAccountEntry> findAccountEntriesByEntryDateAfter(LocalDate startDate);
 
     @Query(value= TIME_SERIES_SPECIFIC_ACCOUNT_ENTRY_QUERY, nativeQuery = true)
-    List<SummarizedAccountEntry> findAccountEntriesForAccountByEntryDateAfter (Long accountId, Long sameId);
+    List<SummarizedAccountEntry> findAccountEntriesForAccountByEntryDateAfter (Long accountId);
 
     AccountEntry findTopByAccountEqualsOrderByIdDesc(Account account);
 
