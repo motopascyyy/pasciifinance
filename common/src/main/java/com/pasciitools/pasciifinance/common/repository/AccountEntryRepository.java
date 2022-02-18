@@ -45,6 +45,31 @@ public interface AccountEntryRepository extends CrudRepository<AccountEntry, Lon
     @Query(value= LATEST_ENTRIES_QUERY, nativeQuery = true)
     List<AccountEntry> getLatestResults (LocalDateTime d);
 
+    String LATEST_ENTRIES_QUERY_FOR_ACC =
+            "select " +
+                    "    * " +
+                    "from " +
+                    "    account_entry ae " +
+                    "    inner join account a on ae.account_id = a.id " +
+                    "    inner join ( " +
+                    "        select " +
+                    "            max(entry_date) as maxDate, " +
+                    "            ae.account_id as aid " +
+                    "        from " +
+                    "            account_entry ae " +
+                    "        where " +
+                    "            ae.entry_date <= ? " +
+                    "        group by " +
+                    "            ae.account_id " +
+                    "    ) max_ae on ae.account_id = max_ae.aid " +
+                    "    and ae.entry_date = maxDate " +
+                    "where " +
+                    "    a.active = 'TRUE' AND" +
+                    "    ae.account_id = ?";
+
+    @Query(value= LATEST_ENTRIES_QUERY_FOR_ACC, nativeQuery = true)
+    List<AccountEntry> getLatestResults (LocalDateTime d, Long accountId);
+
     AccountEntry findTopByOrderByEntryDateDesc();
 
 

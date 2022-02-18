@@ -18,6 +18,13 @@ function getAccounts () {
                 let accEntryDiv = document.createElement("DIV");
                 accEntryDiv.setAttribute("class", "account_entry_item");
 
+                let chartButton = document.createElement("button");
+                chartButton.innerText = String.fromCodePoint(0x1F4C8);
+                chartButton.addEventListener('click', function(evt) {
+                    const accId = acc.id;
+                    console.log ("Clicked on chart button for account: " + accId);
+                    getBalanceString(accId);
+                });
                 let label = document.createElement("LABEL");
                 label.setAttribute("class", "entry_label");
                 let bvId = acc.institution + "_" + acc.id + "_bv";
@@ -27,6 +34,7 @@ function getAccounts () {
                 let labelTextNode = document.createTextNode(acc.institution + " " + acc.accountLabel);
                 label.appendChild(labelTextNode);
                 let labelContainerDiv = createEntryContainerDiv();
+                labelContainerDiv.appendChild(chartButton);
                 labelContainerDiv.appendChild(label);
 
                 let bvField = createInput("Book Value: " + acc.bookValue, "bv_input", bvId);
@@ -46,6 +54,7 @@ function getAccounts () {
                 });
                 let growthContainerDiv = createEntryContainerDiv();
                 growthContainerDiv.appendChild(growthField);
+
 
                 accEntryDiv.appendChild(labelContainerDiv);
                 accEntryDiv.appendChild(bvContainerDiv);
@@ -118,9 +127,14 @@ function createEntryContainerDiv () {
     return containerDiv;
 }
 
-function getBalanceString () {
+function getBalanceString (accountId) {
     const Http = new XMLHttpRequest();
-    const url='/currentValue';
+    let url;
+    if (accountId == null) {
+        url = '/currentValue';
+    } else {
+        url = '/currentValue/' + accountId;
+    }
     Http.open("GET", url);
     Http.send();
 
@@ -134,7 +148,7 @@ function getBalanceString () {
             newHeader.appendChild(headerText);
             div.appendChild(newHeader);
             loadModal();
-            loadChart();
+            loadChart(accountId);
         }
     }
 }
@@ -164,7 +178,7 @@ function submitEntries ()  {
         xhr.send(JSON.stringify(entriesToSubmit));
         xhr.onreadystatechange = (e) => {
             if (xhr.readyState === 4 && xhr.status === 200) {
-                getBalanceString();
+                getBalanceString(null);
                 form.reset();
             }
         }
@@ -257,10 +271,17 @@ function closeModal () {
 }
 
 
-function loadChart () {
+function loadChart (accountId) {
     let startDate = new Date ('2020-01-01').toJSON();
     let Http = new XMLHttpRequest();
-    let url='/time_series_summary?startDate=' + startDate;
+    let url;
+    if (accountId == null) {
+        url = '/time_series_summary?startDate=' + startDate;
+    } else if (accountId == NaN) {
+        url = '/time_series_summary?startDate=' + startDate;
+    } else {
+        url = "/account_time_series_summary/" + accountId;
+    }
     Http.open("GET", url);
     Http.send();
 
@@ -277,7 +298,8 @@ function loadChart () {
             }
 
             let ctx = document.getElementById('myChart').getContext('2d');
-            let myChart = new Chart(ctx, {
+            if (myChart) {myChart.destroy();}
+            myChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
@@ -323,7 +345,7 @@ function fetchAllData () {
 
 
 let submitBtn;
-
+var myChart;
 window.addEventListener( "load", function () {
     getAccounts();
     submitBtn = document.getElementById("submit");

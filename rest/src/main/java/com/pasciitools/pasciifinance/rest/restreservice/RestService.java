@@ -63,6 +63,28 @@ public class RestService {
         }
     }
 
+    @GetMapping("/currentValue/{accountId}")
+    public String getCurrentValue(@PathVariable Long accountId) {
+        var result = "$0";
+        var now = LocalDateTime.now();
+        var latestEntries = entryRepo.getLatestResults(now, accountId);
+        if (latestEntries != null && !latestEntries.isEmpty()) {
+            var previousEntries = entryRepo.getLatestResults(now.minus(1, ChronoUnit.DAYS), accountId);
+            var previousBalance = getBalanceFromListOfEntries(previousEntries);
+            var currentBalance = getBalanceFromListOfEntries(latestEntries);
+
+            if (currentBalance.doubleValue() > previousBalance.doubleValue()) {
+                result = currentBalance.doubleValue() != 0.0 ? String.format("%s up from %s", getFormattedAsCurrency(currentBalance), getFormattedAsCurrency(previousBalance)) : result;
+            } else if (currentBalance.doubleValue() < previousBalance.doubleValue())
+                result = currentBalance.doubleValue() != 0.0 ? String.format("%s down from %s", getFormattedAsCurrency(currentBalance), getFormattedAsCurrency(previousBalance)) : result;
+            else
+                result = String.format("No change week over week. Current balance: %s", getFormattedAsCurrency(currentBalance));
+            return result;
+        } else {
+            return "No results retrieved. Apparently you're broke!";
+        }
+    }
+
     @GetMapping("/latestEntries")
     public List<AccountEntry> getLatestEntries () {
         return entryRepo.getLatestResults(LocalDateTime.now());
