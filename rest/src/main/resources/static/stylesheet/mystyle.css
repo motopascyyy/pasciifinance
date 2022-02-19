@@ -18,6 +18,16 @@ body {
     width: 25%;
 }
 
+.entry_container > button {
+    margin: 5px auto 5px 5px;
+    border: none;
+    background: none;
+}
+
+.entry_container > button:hover {
+    cursor: pointer
+}
+
 input {
     -moz-appearance: textfield;
     -webkit-appearance: textfield;

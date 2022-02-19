@@ -132,8 +132,10 @@ function getBalanceString (accountId) {
     let url;
     if (accountId == null) {
         url = '/currentValue';
-    } else {
+    } else if (!isNaN(accountId) && accountId > 0) {
         url = '/currentValue/' + accountId;
+    } else {
+        console.error("accountId variable past was not a valid number.");
     }
     Http.open("GET", url);
     Http.send();
