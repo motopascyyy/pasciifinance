@@ -43,20 +43,31 @@ public class RestService {
 
     @GetMapping("/currentValue")
     public String getCurrentValue() {
-        var result = "$0";
+        return getCurrentValue(null);
+    }
+
+    @GetMapping("/currentValue/{accountId}")
+    public String getCurrentValue(@PathVariable Long accountId) {
+        var result = "";
         var now = LocalDateTime.now();
-        var latestEntries = entryRepo.getLatestResults(now);
+        var latestEntries = accountId != null && accountId > 0 ?
+                entryRepo.getLatestResults(now, accountId) :
+                entryRepo.getLatestResults(now);
         if (latestEntries != null && !latestEntries.isEmpty()) {
-            var previousEntries = entryRepo.getLatestResults(now.minus(1, ChronoUnit.DAYS));
+            var previousEntries = accountId != null && accountId > 0 ?
+                    entryRepo.getLatestResults(now.minus(1, ChronoUnit.DAYS), accountId) :
+                    entryRepo.getLatestResults(now.minus(1, ChronoUnit.DAYS));
             var previousBalance = getBalanceFromListOfEntries(previousEntries);
             var currentBalance = getBalanceFromListOfEntries(latestEntries);
 
+            if (accountId != null && accountId > 1)
+                result = latestEntries.get(0).getAccount().toString() + ": ";
             if (currentBalance.doubleValue() > previousBalance.doubleValue()) {
-                result = currentBalance.doubleValue() != 0.0 ? String.format("%s up from %s", getFormattedAsCurrency(currentBalance), getFormattedAsCurrency(previousBalance)) : result;
+                result += currentBalance.doubleValue() != 0.0 ? String.format("%s up from %s", getFormattedAsCurrency(currentBalance), getFormattedAsCurrency(previousBalance)) : result;
             } else if (currentBalance.doubleValue() < previousBalance.doubleValue())
-                result = currentBalance.doubleValue() != 0.0 ? String.format("%s down from %s", getFormattedAsCurrency(currentBalance), getFormattedAsCurrency(previousBalance)) : result;
+                result += currentBalance.doubleValue() != 0.0 ? String.format("%s down from %s", getFormattedAsCurrency(currentBalance), getFormattedAsCurrency(previousBalance)) : result;
             else
-                result = String.format("No change week over week. Current balance: %s", getFormattedAsCurrency(currentBalance));
+                result += String.format("No change week over week. Current balance: %s", getFormattedAsCurrency(currentBalance));
             return result;
         } else {
             return "No results retrieved. Apparently you're broke!";
@@ -92,6 +103,11 @@ public class RestService {
     private String getFormattedAsCurrency(BigDecimal dec) {
         dec = dec.setScale(2, RoundingMode.HALF_UP);
         return nfCAD.format(dec.doubleValue());
+    }
+
+    @GetMapping("/account_time_series_summary/{accountId}")
+    public List<SummarizedAccountEntry> getTimeSeriesSummaryForAccount(@PathVariable Long accountId) {
+        return entryRepo.findAccountEntriesForAccountByEntryDateAfter(accountId);
     }
 
     @GetMapping("/accounts")

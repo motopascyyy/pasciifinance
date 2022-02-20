@@ -10,12 +10,22 @@ body {
 }
 
 #final_number {
-    margin: 150px auto 5px auto;
+    margin: 5px auto 5px auto;
 }
 
 .entry_container {
     display: table-cell;
     width: 25%;
+}
+
+.entry_label > button {
+    margin: auto;
+    border: none;
+    background: none;
+}
+
+.entry_label > button:hover {
+    cursor: pointer
 }
 
 input {
