@@ -10,7 +10,7 @@ body {
 }
 
 #final_number {
-    margin: 150px auto 5px auto;
+    margin: 5px auto 5px auto;
 }
 
 .entry_container {
@@ -18,13 +18,13 @@ body {
     width: 25%;
 }
 
-.entry_container > button {
-    margin: 5px auto 5px 5px;
+.entry_label > button {
+    margin: auto;
     border: none;
     background: none;
 }
 
-.entry_container > button:hover {
+.entry_label > button:hover {
     cursor: pointer
 }
 

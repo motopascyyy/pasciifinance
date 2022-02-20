@@ -27,6 +27,7 @@ function getAccounts () {
                 });
                 let label = document.createElement("LABEL");
                 label.setAttribute("class", "entry_label");
+                label.appendChild(chartButton);
                 let bvId = acc.institution + "_" + acc.id + "_bv";
                 let mvId = acc.institution + "_" + acc.id + "_mv";
                 let growthId = acc.institution + "_" + acc.id + "_gv";
@@ -34,7 +35,7 @@ function getAccounts () {
                 let labelTextNode = document.createTextNode(acc.institution + " " + acc.accountLabel);
                 label.appendChild(labelTextNode);
                 let labelContainerDiv = createEntryContainerDiv();
-                labelContainerDiv.appendChild(chartButton);
+                // labelContainerDiv.appendChild(chartButton);
                 labelContainerDiv.appendChild(label);
 
                 let bvField = createInput("Book Value: " + acc.bookValue, "bv_input", bvId);
