@@ -1,3 +1,1 @@
 rootProject.name = 'pasciifinance'
-include 'common'
-include 'rest'
