@@ -9,6 +9,7 @@ import com.pasciitools.pasciifinance.common.exception.NumberOutOfRangeException;
 import com.pasciitools.pasciifinance.common.repository.AccountEntryRepository;
 import com.pasciitools.pasciifinance.common.repository.AccountRepository;
 import com.pasciitools.pasciifinance.common.repository.SecurityRepository;
+import com.pasciitools.pasciifinance.common.repository.SummarizedAccountEntryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,9 @@ public class RestService {
 
     @Autowired
     private AccountEntryRepository entryRepo;
+
+    @Autowired
+    private SummarizedAccountEntryRepository summarizedAccountEntryRepository;
 
     @Autowired
     private AccountRepository accountRepo;
@@ -97,7 +101,7 @@ public class RestService {
     @GetMapping("/time_series_summary")
     public List<SummarizedAccountEntry> getTimeSeriesSummary(@RequestParam
                                                                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDate startDate) {
-        return entryRepo.findAccountEntriesByEntryDateAfter(startDate);
+        return summarizedAccountEntryRepository.findAccountEntriesByEntryDateAfter(startDate);
     }
 
     private String getFormattedAsCurrency(BigDecimal dec) {
@@ -107,7 +111,7 @@ public class RestService {
 
     @GetMapping("/account_time_series_summary/{accountId}")
     public List<SummarizedAccountEntry> getTimeSeriesSummaryForAccount(@PathVariable Long accountId) {
-        return entryRepo.findAccountEntriesForAccountByEntryDateAfter(accountId);
+        return summarizedAccountEntryRepository.findAccountEntriesForAccountByEntryDateAfter(accountId);
     }
 
     @GetMapping("/accounts")
