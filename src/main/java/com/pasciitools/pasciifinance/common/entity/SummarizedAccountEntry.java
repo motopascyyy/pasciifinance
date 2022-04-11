@@ -2,11 +2,11 @@ package com.pasciitools.pasciifinance.common.entity;
 
 import org.hibernate.annotations.Immutable;
 
-import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Entity
 @Immutable
@@ -16,18 +16,19 @@ public class SummarizedAccountEntry implements Comparable<SummarizedAccountEntry
     @Id
     private Long entryId;
 
-    @Column(name = "acc_id")
-    private Long accId;
+    private Long accountId;
 
-    private String entryDate;
+    private LocalDate entryDate;
     private BigDecimal bookValue;
     private BigDecimal marketValue;
 
-    public Long getAccId() {
-        return accId;
+    public Long getEntryId() {return entryId;};
+
+    public Long getAccountId() {
+        return accountId;
     }
 
-    public String getEntryDate() {
+    public LocalDate getEntryDate() {
         return entryDate;
     }
 
@@ -40,6 +41,14 @@ public class SummarizedAccountEntry implements Comparable<SummarizedAccountEntry
     }
 
     public SummarizedAccountEntry () {};
+
+    public SummarizedAccountEntry (LocalDate entryDate, BigDecimal bookValue, BigDecimal marketValue) {
+        this.entryDate = entryDate;
+        this.bookValue = bookValue;
+        this.marketValue = marketValue;
+        this.accountId = -1L;
+        this.entryId = -1L;
+    }
 
     @Override
     public int compareTo(SummarizedAccountEntry o) {
@@ -55,7 +64,7 @@ public class SummarizedAccountEntry implements Comparable<SummarizedAccountEntry
         if (o instanceof SummarizedAccountEntry s) {
             if (!getEntryDate().equals(s.getEntryDate()))
                 return false;
-            if (!getAccId().equals(s.getAccId()))
+            if (!getAccountId().equals(s.getAccountId()))
                 return false;
             if (!getBookValue().equals(s.getBookValue()))
                 return false;

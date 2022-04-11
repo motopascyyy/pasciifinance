@@ -72,4 +72,6 @@ public interface AccountEntryRepository extends CrudRepository<AccountEntry, Lon
     AccountEntry findTopByOrderByEntryDateDesc();
     AccountEntry findTopByAccountEqualsOrderByIdDesc(Account account);
 
+    AccountEntry findTopByAccountAndEntryDateLessThanEqualOrderByEntryDateDesc(Account account, LocalDateTime entryDate);
+
 }

@@ -98,65 +98,24 @@ GROUP BY
     TO_CHAR(ENTRY_DATE, 'yyyy-mm');
 
 create view SUMMARIZED_ACCOUNT_ENTRY_BY_MONTH as
-select
-    ENTRY_ID,
-    e_date as entry_date,
-    sum(coalesce(BOOK_VALUE, PREVIOUS_BOOK_VALUE)) as book_value,
-    sum(coalesce(MARKET_VALUE, PREVIOUS_MARKET_VALUE)) as market_value,
-    acc_id
-from
-    (
-        select
-            dates.e_date,
-            acc_id,
-            entry_id,
-            book_value,
-            LAG(book_value) OVER (
-             partition by dates.acc_id
-             order by
-                dates.e_date
-          ) as previous_book_value,
-                market_value,
-            LAG(market_value) OVER (
-             partition by dates.acc_id
-             order by
-                dates.e_date
-          ) as previous_market_value
-        from
-            (
-                select
-                    distinct to_char(entry_date, 'yyyy-mm') as e_date,
-                             accts.id as acc_id
-                from
-                    account_entry
-                        cross join (
-                        select
-                            id
-                        from
-                            account
-                    ) accts
-            ) dates
-                left join (
-                select
-                    lae.ACCOUNT_ID,
-                    lae.E_DATE,
-                    lae.ENTRY_ID,
-                    CASE
-                        WHEN JOINT_ACCOUNT = 'TRUE' THEN BOOK_VALUE / 2
-                        ELSE BOOK_VALUE
-                        END as BOOK_VALUE,
-                    CASE
-                        WHEN JOINT_ACCOUNT = 'TRUE' THEN MARKET_VALUE / 2
-                        ELSE MARKET_VALUE
-                        END as MARKET_VALUE
-                from
-                    LATEST_WEEKLY_ACCOUNT_ENTRY lae
-                        inner join account_entry ae on lae.ENTRY_ID = ae.id
-                        inner join account acc on ae.account_id = acc.id
-            ) entries on dates.e_date = entries.e_date
-                and dates.acc_id = entries.account_id
-    )
-group by
-    acc_id, e_date
-order by
-    e_date asc;
+select latest.entry_date, latest.ENTRY_ID, ae.ACCOUNT_ID,
+       CASE
+           WHEN JOINT_ACCOUNT = 'TRUE' THEN BOOK_VALUE / 2
+           ELSE BOOK_VALUE
+           END as BOOK_VALUE,
+       CASE
+           WHEN JOINT_ACCOUNT = 'TRUE' THEN MARKET_VALUE / 2
+           ELSE MARKET_VALUE
+           END as MARKET_VALUE
+from (
+         select distinct ACCOUNT_ID,
+                         max(id) over (partition by cast(DATEADD(dd, -DAY(DATEADD(m, 1, entry_date)),
+                                                                 DATEADD(m, 1, ENTRY_DATE)) as DATE), ACCOUNT_ID) as ENTRY_ID,
+                         cast(DATEADD(dd, -DAY(DATEADD(m, 1, entry_date)),
+                                      DATEADD(m, 1, ENTRY_DATE)) as DATE)                                         as entry_date
+         from ACCOUNT_ENTRY
+     ) as latest
+         inner join ACCOUNT_ENTRY ae
+                    on latest.ENTRY_ID = ae.ID
+         inner join ACCOUNT A on A.ID = ae.ACCOUNT_ID
+order by latest.entry_date asc, ae.ACCOUNT_ID asc;

@@ -1,5 +1,6 @@
 package com.pasciitools.pasciifinance.common.repository;
 
+import com.pasciitools.pasciifinance.common.dto.GroupedResult;
 import com.pasciitools.pasciifinance.common.entity.SummarizedAccountEntry;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -9,13 +10,14 @@ import java.util.List;
 
 @Repository
 public interface SummarizedAccountEntryRepository extends ReadOnlyRepository<SummarizedAccountEntry, Long>{
-    List<SummarizedAccountEntry> findAllByAccId(Long accountId);
+    List<SummarizedAccountEntry> findAllByAccountId(Long accountId);
 
     String TIME_SERIES_ENTRY_QUERY =
             "select " +
                     "   entry_id, " +
-                    "   acc_id, " +
-                    "   e_date as entry_date, " +
+                    "   acc_id as \"account_id\", " +
+                    "   DATEADD(dd, -DAY(DATEADD(m, 1, PARSEDATETIME(e_date, 'yyyy-mm'))), " +
+                    "        DATEADD(m, 1, PARSEDATETIME(e_date, 'yyyy-mm'))) as entry_date,                    " +
                     "   sum(coalesce(BOOK_VALUE, PREVIOUS_BOOK_VALUE)) as book_value, " +
                     "   sum(coalesce(MARKET_VALUE, PREVIOUS_MARKET_VALUE)) as market_value " +
                     "from " +
@@ -150,4 +152,28 @@ public interface SummarizedAccountEntryRepository extends ReadOnlyRepository<Sum
 
     @Query(value= TIME_SERIES_SPECIFIC_ACCOUNT_ENTRY_QUERY, nativeQuery = true)
     List<SummarizedAccountEntry> findAccountEntriesForAccountByEntryDateAfter (Long accountId);
+
+//    String SUMMED_AS_GROUP =
+//            "select " +
+//                    "   new com.pasciitools.pasciifinance.common.entity.SummarizedAccountEntry(" +
+//                    "       entry_date, " +
+//                    "       sum(book_value), " +
+//                    "       sum(market_value)) " +
+//                    "from SUMMARIZED_ACCOUNT_ENTRY_BY_MONTH " +
+//                    "group by " +
+//                    "   entry_date";
+
+    String SUMMED_AS_GROUP =
+            "select " +
+            "   entry_date as entryDate, " +
+            "   sum(book_value) as bookValue, " +
+            "   sum(market_value) as marketValue " +
+            "from SUMMARIZED_ACCOUNT_ENTRY_BY_MONTH " +
+            "group by " +
+            "   entryDate " +
+            "order by " +
+            "   entryDate";
+
+    @Query(value = SUMMED_AS_GROUP, nativeQuery = true)
+    List<GroupedResult> findSummarizedValues();
 }
