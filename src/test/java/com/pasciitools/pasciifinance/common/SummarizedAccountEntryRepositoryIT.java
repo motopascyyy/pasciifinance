@@ -6,6 +6,7 @@ import com.pasciitools.pasciifinance.common.entity.SummarizedAccountEntry;
 import com.pasciitools.pasciifinance.common.repository.AccountEntryRepository;
 import com.pasciitools.pasciifinance.common.repository.AccountRepository;
 import com.pasciitools.pasciifinance.common.repository.SummarizedAccountEntryRepository;
+import org.apache.tomcat.jni.Local;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -14,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -120,7 +122,7 @@ public class SummarizedAccountEntryRepositoryIT {
          */
 
         //0
-        var activeAccounts = accountRepository.findAllByActive(true);
+        var activeAccounts = accountRepository.findAll();
 
         //1
         String query = "select min(entry_date) from account_entry";
@@ -134,21 +136,42 @@ public class SummarizedAccountEntryRepositoryIT {
         Map<String, List<AccountEntry>> expectedMap = new HashMap<>();
         var nextDate = earliestDate;
         while (nextDate.isBefore(now)) {
-            System.out.println (String.format("Parsing for date: %s", nextDate));
-            var eom = YearMonth.from(nextDate).atEndOfMonth().atStartOfDay();
+//            System.out.println (String.format("Parsing for date: %s", nextDate));
+            var eom = YearMonth.from(nextDate).atEndOfMonth().atStartOfDay().plusDays(1).minusSeconds(1);
             String key = eom.getYear() + "-" + eom.getMonthValue();
             List<AccountEntry> list = new ArrayList<>();
             for (Account a : activeAccounts) {
                 var entry = entryRepository.findTopByAccountAndEntryDateLessThanEqualOrderByEntryDateDesc(a, eom);
+                if (entry == null) {
+                    System.out.println(String.format("Unable to find results for account %s (%s) with EOM %s. Creating dummy entry.", a, a.getId(), eom));
+                    entry = new AccountEntry();
+                    entry.setAccount(a);
+                    entry.setBookValue(0);
+                    entry.setMarketValue(0);
+                    entry.setEntryDate(eom);
+                }
                 list.add(entry);
             }
             expectedMap.put(key, list);
             nextDate = YearMonth.from(nextDate).atDay(1).plusMonths(1).atStartOfDay();
-            System.out.println(String.format("Next date to study will be: %s", nextDate));
+//            System.out.println(String.format("Next date to study will be: %s", nextDate));
         }
-        System.out.println (expectedMap.keySet());
 
-        var actualList = sumRepository.findAccountEntriesByEntryDateAfter(now.toLocalDate());
+//        var actualList = sumRepository.findAccountEntriesByEntryDateAfter(now.toLocalDate());
+        var actualList = sumRepository.findAllByEntryDateBefore(now.toLocalDate());
+        System.out.println("debug point");
+        for (SummarizedAccountEntry summarizedAccountEntry : actualList) {
+            var expectedEntry = findMatchingInMap(expectedMap, summarizedAccountEntry);
+            assertNotNull(expectedEntry, String.format("Null entry found trying to find a matching entry in the expected map for Account: %s and Entry ID: %s and Entry Date: %s", summarizedAccountEntry.getAccountId(), summarizedAccountEntry.getEntryId(), summarizedAccountEntry.getEntryDate()));
+
+            if (expectedEntry.getAccount().isJointAccount()) {
+                assertEquals(expectedEntry.getBookValue().divide(BigDecimal.valueOf(2)).doubleValue(), summarizedAccountEntry.getBookValue().doubleValue(), String.format("Differences found for Account ID %s, Entry Date %s.", summarizedAccountEntry.getAccountId(), summarizedAccountEntry.getEntryDate()));
+                assertEquals(expectedEntry.getMarketValue().divide(BigDecimal.valueOf(2)).doubleValue(), summarizedAccountEntry.getMarketValue().doubleValue(), String.format("Differences found for Account ID %s, Entry Date %s.", summarizedAccountEntry.getAccountId(), summarizedAccountEntry.getEntryDate()));
+            } else {
+                assertEquals(expectedEntry.getBookValue().doubleValue(), summarizedAccountEntry.getBookValue().doubleValue(), String.format("Differences found for Account ID %s, Entry Date %s.", summarizedAccountEntry.getAccountId(), summarizedAccountEntry.getEntryDate()));
+                assertEquals(expectedEntry.getMarketValue().doubleValue(), summarizedAccountEntry.getMarketValue().doubleValue(), String.format("Differences found for Account ID %s, Entry Date %s.", summarizedAccountEntry.getAccountId(), summarizedAccountEntry.getEntryDate()));
+            }
+        }
 
     }
 
@@ -157,12 +180,19 @@ public class SummarizedAccountEntryRepositoryIT {
         var iter = entries.keySet().iterator();
         while (iter.hasNext()) {
             String key = iter.next();
-//            for (AccountEntry entry : entries.get(key)){
-//                if (entry != null && entry.getAccount().isActive())
-//                    count ++;
-//            }
             count+= entries.get(key).size();
         }
         return count;
+    }
+
+    private AccountEntry findMatchingInMap (Map<String, List<AccountEntry>> entries, SummarizedAccountEntry summarizedAccountEntry) {
+        LocalDate entryDateKey = summarizedAccountEntry.getEntryDate();
+        String key = entryDateKey.getYear() + "-" + entryDateKey.getMonthValue();
+        var entryList= entries.get(key);
+        for (AccountEntry entry : entryList) {
+            if (summarizedAccountEntry.getAccountId().equals(entry.getAccount().getId()))
+                return entry;
+        }
+        return null;
     }
 }

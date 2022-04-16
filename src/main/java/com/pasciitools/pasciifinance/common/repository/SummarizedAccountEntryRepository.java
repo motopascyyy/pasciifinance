@@ -176,4 +176,6 @@ public interface SummarizedAccountEntryRepository extends ReadOnlyRepository<Sum
 
     @Query(value = SUMMED_AS_GROUP, nativeQuery = true)
     List<GroupedResult> findSummarizedValues();
+
+    List<SummarizedAccountEntry> findAllByEntryDateBefore(LocalDate date);
 }
