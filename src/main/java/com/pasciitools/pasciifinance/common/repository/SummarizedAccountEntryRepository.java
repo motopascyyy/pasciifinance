@@ -147,11 +147,13 @@ public interface SummarizedAccountEntryRepository extends ReadOnlyRepository<Sum
                     "order by " +
                     "   e_date asc";
 
-    @Query(value= TIME_SERIES_ENTRY_QUERY, nativeQuery = true)
-    List<SummarizedAccountEntry> findAccountEntriesByEntryDateAfter(LocalDate startDate);
+    @Query(value= SUMMED_AS_GROUP, nativeQuery = true)
+    List<GroupedResult> findAccountEntriesByEntryDateAfter(LocalDate startDate);
 
     @Query(value= TIME_SERIES_SPECIFIC_ACCOUNT_ENTRY_QUERY, nativeQuery = true)
     List<SummarizedAccountEntry> findAccountEntriesForAccountByEntryDateAfter (Long accountId);
+
+    List<SummarizedAccountEntry> findSummarizedAccountEntriesByAccountId (Long accountId);
 
 //    String SUMMED_AS_GROUP =
 //            "select " +

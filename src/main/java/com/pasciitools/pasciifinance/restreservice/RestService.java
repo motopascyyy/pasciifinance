@@ -1,6 +1,7 @@
 package com.pasciitools.pasciifinance.restreservice;
 
 import com.pasciitools.pasciifinance.common.dto.EntryAllocation;
+import com.pasciitools.pasciifinance.common.dto.GroupedResult;
 import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.entity.Security;
@@ -99,7 +100,7 @@ public class RestService {
 
 
     @GetMapping("/time_series_summary")
-    public List<SummarizedAccountEntry> getTimeSeriesSummary(@RequestParam
+    public List<GroupedResult> getTimeSeriesSummary(@RequestParam
                                                                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDate startDate) {
         return summarizedAccountEntryRepository.findAccountEntriesByEntryDateAfter(startDate);
     }
@@ -111,7 +112,8 @@ public class RestService {
 
     @GetMapping("/account_time_series_summary/{accountId}")
     public List<SummarizedAccountEntry> getTimeSeriesSummaryForAccount(@PathVariable Long accountId) {
-        return summarizedAccountEntryRepository.findAccountEntriesForAccountByEntryDateAfter(accountId);
+//        return summarizedAccountEntryRepository.findAccountEntriesForAccountByEntryDateAfter(accountId);
+        return summarizedAccountEntryRepository.findSummarizedAccountEntriesByAccountId(accountId);
     }
 
     @GetMapping("/accounts")

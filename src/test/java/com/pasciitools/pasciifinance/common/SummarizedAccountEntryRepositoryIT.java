@@ -1,5 +1,6 @@
 package com.pasciitools.pasciifinance.common;
 
+import com.pasciitools.pasciifinance.common.dto.GroupedResult;
 import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.entity.SummarizedAccountEntry;
@@ -46,52 +47,6 @@ public class SummarizedAccountEntryRepositoryIT {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Test
-    public void reconcileResults () {
-
-        List<Account> accounts = new ArrayList<>();
-        var sumRepoResults = sumRepository.findAll();
-        var entryRepoResults = sumRepository.findAccountEntriesByEntryDateAfter(LocalDate.now());
-        assertEquals(sumRepoResults.size(), entryRepoResults.size());
-        List<SummarizedAccountEntry> expectedResults = new ArrayList<>();
-        for (int i = 0; i < sumRepoResults.size(); i++) {
-            SummarizedAccountEntry viewEntry = sumRepoResults.get(i);
-            SummarizedAccountEntry queriedEntry = entryRepoResults.get(i);
-            if (dateChecker(queriedEntry.getEntryDate(), 2018, 02) ||
-                    dateChecker(queriedEntry.getEntryDate(),2018,04) ||
-                    dateChecker(queriedEntry.getEntryDate(),2021,11))
-                System.out.println (queriedEntry.getEntryDate() + "\t" + queriedEntry.getBookValue() + "\t" + queriedEntry.getMarketValue());
-            assertEquals(queriedEntry, viewEntry);
-            if (queriedEntry != null) {
-                int index = findIndexInList(queriedEntry.getEntryDate(), expectedResults);
-                if (index == -1) {
-                    var groupedEntry = new SummarizedAccountEntry(queriedEntry.getEntryDate(), queriedEntry.getBookValue(), queriedEntry.getMarketValue());
-                    expectedResults.add(groupedEntry);
-                } else {
-                    var groupedEntry = expectedResults.get(index);
-                    var replacementEntry = new SummarizedAccountEntry(
-                            groupedEntry.getEntryDate(),
-                            groupedEntry.getBookValue().add(queriedEntry.getBookValue()),
-                            groupedEntry.getMarketValue().add(queriedEntry.getMarketValue()));
-                    expectedResults.set(index, replacementEntry);
-                }
-            }
-        }
-
-
-        var groupedResults = sumRepository.findSummarizedValues();
-        assertEquals(expectedResults.size(), groupedResults.size());
-        for (int i = 0; i < expectedResults.size(); i++) {
-            var expected = expectedResults.get(i);
-            var grouped = groupedResults.get(i);
-            assertEquals(expected.getEntryDate(), grouped.getEntryDate());
-            if (!expected.getBookValue().equals(grouped.getBookValue()) || !expected.getMarketValue().equals(grouped.getMarketValue()))
-                System.out.println (grouped.getEntryDate() + "\t" + expected.getBookValue() + "\t" + grouped.getBookValue() + "\t" + expected.getMarketValue() + "\t" + grouped.getMarketValue());
-//            assertEquals(expected.getBookValue(), grouped.getBookValue(), String.format("Mismatch for book value on date: %s (expected) and %s (actual)",expected.getEntryDate(), grouped.getEntryDate()));
-//            assertEquals(expected.getMarketValue(), grouped.getMarketValue(), String.format("Mismatch for book value on date: %s (expected) and %s (actual)",expected.getEntryDate(), grouped.getEntryDate()));
-        }
-    }
-
     private boolean dateChecker (LocalDate date, int year, int month) {
         if (date != null && date.getYear() == year && date.getMonthValue() == month)
             return true;
@@ -122,7 +77,7 @@ public class SummarizedAccountEntryRepositoryIT {
          */
 
         //0
-        var activeAccounts = accountRepository.findAll();
+        var allAccounts = accountRepository.findAll();
 
         //1
         String query = "select min(entry_date) from account_entry";
@@ -136,11 +91,10 @@ public class SummarizedAccountEntryRepositoryIT {
         Map<String, List<AccountEntry>> expectedMap = new HashMap<>();
         var nextDate = earliestDate;
         while (nextDate.isBefore(now)) {
-//            System.out.println (String.format("Parsing for date: %s", nextDate));
             var eom = YearMonth.from(nextDate).atEndOfMonth().atStartOfDay().plusDays(1).minusSeconds(1);
             String key = eom.getYear() + "-" + eom.getMonthValue();
             List<AccountEntry> list = new ArrayList<>();
-            for (Account a : activeAccounts) {
+            for (Account a : allAccounts) {
                 var entry = entryRepository.findTopByAccountAndEntryDateLessThanEqualOrderByEntryDateDesc(a, eom);
                 if (entry == null) {
                     System.out.println(String.format("Unable to find results for account %s (%s) with EOM %s. Creating dummy entry.", a, a.getId(), eom));
@@ -154,10 +108,8 @@ public class SummarizedAccountEntryRepositoryIT {
             }
             expectedMap.put(key, list);
             nextDate = YearMonth.from(nextDate).atDay(1).plusMonths(1).atStartOfDay();
-//            System.out.println(String.format("Next date to study will be: %s", nextDate));
         }
 
-//        var actualList = sumRepository.findAccountEntriesByEntryDateAfter(now.toLocalDate());
         var actualList = sumRepository.findAllByEntryDateBefore(now.toLocalDate());
         System.out.println("debug point");
         for (SummarizedAccountEntry summarizedAccountEntry : actualList) {
@@ -194,5 +146,98 @@ public class SummarizedAccountEntryRepositoryIT {
                 return entry;
         }
         return null;
+    }
+
+    @Test
+    public void testGroupedSummaries () {
+        var summarizedValues = sumRepository.findSummarizedValues();
+        var accountCount = accountRepository.count();
+        assertNotNull(summarizedValues);
+
+        Map<String, List<AccountEntry>> monthlyResults = getMapOfMonthlyEntries();
+
+
+        for (GroupedResult groupedResult : summarizedValues) {
+            String key = groupedResult.getEntryDate().getYear() + "-" + groupedResult.getEntryDate().getMonthValue();
+            List<AccountEntry> currentMonthResults = monthlyResults.get(key);
+            var bookValue = BigDecimal.ZERO;
+            var marketValue = BigDecimal.ZERO;
+            for (AccountEntry entry : currentMonthResults) {
+                /**
+                 * Check if the entry we're dealing with is actually from the current month.
+                 * We know that entries that aren't in this month won't be captured in the view logic.
+                 * In that situation, records need to be rolled-forward automatically.
+                 */
+                if (entry.getEntryDate().getYear() == groupedResult.getEntryDate().getYear() &&
+                        entry.getEntryDate().getMonthValue() == groupedResult.getEntryDate().getMonthValue()) {
+                    if (entry.getAccount().isJointAccount()) {
+                        bookValue = bookValue.add(entry.getBookValue().divide(BigDecimal.valueOf(2)));
+                        marketValue = marketValue.add(entry.getMarketValue().divide(BigDecimal.valueOf(2)));
+                    } else {
+                        bookValue = bookValue.add(entry.getBookValue());
+                        marketValue = marketValue.add(entry.getMarketValue());
+                    }
+                }
+            }
+            assertEquals(bookValue.doubleValue(), groupedResult.getBookValue().doubleValue(), String.format("Could not match the book value on date %s.\n%s", groupedResult.getEntryDate(), getListOfBookValues(currentMonthResults)));
+            assertEquals(marketValue.doubleValue(), groupedResult.getMarketValue().doubleValue(), String.format("Could not match the market value on date %s. \n%s", groupedResult.getEntryDate(), getListOfMarketValues(currentMonthResults)));
+        }
+    }
+
+    private String getListOfBookValues (List<AccountEntry> entries) {
+        String result = "";
+        for (AccountEntry entry : entries) {
+            if (entry.getAccount().isJointAccount())
+                result += String.format("\tAccount: %s - Entry Date: %s - Book Value: %s\n", entry.getAccount().getId(), entry.getEntryDate(), entry.getBookValue().divide(BigDecimal.valueOf(2)));
+            else
+                result += String.format("\tAccount: %s - Entry Date: %s - Book Value: %s\n", entry.getAccount().getId(), entry.getEntryDate(), entry.getBookValue());
+        }
+
+        return result;
+    }
+
+    private String getListOfMarketValues (List<AccountEntry> entries) {
+        String result = "";
+        for (AccountEntry entry : entries) {
+            result += String.format("\tAccount: %s - Entry Date: %s - Market Value: %s\n", entry.getAccount().getId(), entry.getEntryDate(), entry.getBookValue());
+        }
+
+        return result;
+    }
+
+
+    private Map<String, List<AccountEntry>> getMapOfMonthlyEntries () {
+        var allAccounts = accountRepository.findAll();
+        Map<String, List<AccountEntry>> expectedMap = new HashMap<>();
+        //1
+        String query = "select min(entry_date) from account_entry";
+        var earliestDate = jdbcTemplate.queryForObject(query, LocalDateTime.class);
+        var earliestMonth = earliestDate.getMonth();
+        var earliestYear = earliestDate.getYear();
+
+        var now = LocalDateTime.now();
+
+        //2
+        var nextDate = earliestDate;
+        while (nextDate.isBefore(now)) {
+            var eom = YearMonth.from(nextDate).atEndOfMonth().atStartOfDay().plusDays(1).minusSeconds(1);
+            String key = eom.getYear() + "-" + eom.getMonthValue();
+            List<AccountEntry> list = new ArrayList<>();
+            for (Account a : allAccounts) {
+                var entry = entryRepository.findTopByAccountAndEntryDateLessThanEqualOrderByEntryDateDesc(a, eom);
+                if (entry == null) {
+                    System.out.println(String.format("Unable to find results for account %s (%s) with EOM %s. Creating dummy entry.", a, a.getId(), eom));
+                    entry = new AccountEntry();
+                    entry.setAccount(a);
+                    entry.setBookValue(0);
+                    entry.setMarketValue(0);
+                    entry.setEntryDate(eom);
+                }
+                list.add(entry);
+            }
+            expectedMap.put(key, list);
+            nextDate = YearMonth.from(nextDate).atDay(1).plusMonths(1).atStartOfDay();
+        }
+        return expectedMap;
     }
 }

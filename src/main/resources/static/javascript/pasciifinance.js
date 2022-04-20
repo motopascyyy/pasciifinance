@@ -296,10 +296,11 @@ function loadChart (accountId) {
             for (let entry of summaryEntryArr) {
                 if (entry == null || entry.marketValue == null){
                     console.error("There was a null value for this entry: " + entry);
+                } else {
+                    marketValues.push(entry.marketValue);
+                    bookValues.push(entry.bookValue);
+                    labels.push(entry.entryDate);
                 }
-                marketValues.push(entry.marketValue);
-                bookValues.push(entry.bookValue);
-                labels.push(entry.entryDate);
             }
 
             let ctx = document.getElementById('myChart').getContext('2d');
