@@ -3,6 +3,7 @@ plugins {
     id 'org.springframework.boot' version '2.6.3'
     id 'io.spring.dependency-management' version '1.0.11.RELEASE'
     id 'java'
+    id 'jvm-test-suite'
 }
 
 group = 'com.pascii-tools'
@@ -10,6 +11,37 @@ version = '0.0.6-SNAPSHOT'
 
 repositories {
     mavenCentral()
+}
+
+testing {
+    suites {
+        test {
+            useJUnitJupiter()
+        }
+
+        integrationTest(JvmTestSuite) {
+            dependencies {
+                implementation project
+            }
+
+            targets {
+                all {
+                    testTask.configure {
+                        shouldRunAfter(test)
+                    }
+                }
+            }
+        }
+    }
+}
+
+//tasks.named('check') {
+//    dependsOn(testing.suites.integrationTest)
+//}
+
+configurations {
+    intTestImplementation.extendsFrom implementation
+    intTestRuntimeOnly.extendsFrom runtimeOnly
 }
 
 dependencies {
@@ -22,7 +54,11 @@ dependencies {
     implementation 'org.seleniumhq.selenium:selenium-java:3.141.59'
     implementation 'com.github.ulisesbocchio:jasypt-spring-boot:3.0.4'
     testImplementation 'org.springframework.boot:spring-boot-starter-test:2.6.3'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
     runtimeOnly 'com.h2database:h2:1.4.200'
+    integrationTestImplementation 'org.springframework.boot:spring-boot-starter-test:2.6.3'
+    integrationTestImplementation 'org.springframework.boot:spring-boot-starter-data-jpa:2.6.3'
+    integrationTestImplementation 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
 }
 
 test {

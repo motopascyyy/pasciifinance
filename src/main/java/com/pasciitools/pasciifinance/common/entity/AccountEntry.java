@@ -47,8 +47,8 @@ public class AccountEntry {
         this.entryDate = entryDate;
     }
 
-    public double getBookValue() {
-        return bookValue.doubleValue();
+    public BigDecimal getBookValue() {
+        return bookValue;
     }
 
     public void setBookValue(double bookValue) {

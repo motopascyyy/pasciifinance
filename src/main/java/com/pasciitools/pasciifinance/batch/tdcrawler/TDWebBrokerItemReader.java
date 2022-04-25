@@ -145,7 +145,7 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
 
     private List<AccountEntry> collectData (List<WebElement> accountDivs) throws InterruptedException, SecurityNotFoundException {
         List<AccountEntry> accountEntries= new ArrayList<>();
-        var zero = new BigDecimal(0.0);
+        var zero = BigDecimal.valueOf(0.0);
         var currentDate = LocalDateTime.now();
         for (int i = 0; i < accountDivs.size(); i++) {
             if (i != 0)

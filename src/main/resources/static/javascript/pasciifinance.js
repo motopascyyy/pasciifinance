@@ -22,7 +22,6 @@ function getAccounts () {
                 chartButton.innerText = String.fromCodePoint(0x1F4C8);
                 chartButton.addEventListener('click', function(evt) {
                     const accId = acc.id;
-                    console.log ("Clicked on chart button for account: " + accId);
                     getBalanceString(accId);
                 });
                 let label = document.createElement("LABEL");
@@ -295,9 +294,13 @@ function loadChart (accountId) {
             let marketValues = [];
             let bookValues = [];
             for (let entry of summaryEntryArr) {
-                marketValues.push(entry.marketValue);
-                bookValues.push(entry.bookValue);
-                labels.push(entry.entryDate);
+                if (entry == null || entry.marketValue == null){
+                    console.error("There was a null value for this entry: " + entry);
+                } else {
+                    marketValues.push(entry.marketValue);
+                    bookValues.push(entry.bookValue);
+                    labels.push(entry.entryDate);
+                }
             }
 
             let ctx = document.getElementById('myChart').getContext('2d');
