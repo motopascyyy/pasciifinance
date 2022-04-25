@@ -2,12 +2,10 @@ package com.pasciitools.pasciifinance.common.repository;
 
 import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
-import com.pasciitools.pasciifinance.common.entity.SummarizedAccountEntry;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 

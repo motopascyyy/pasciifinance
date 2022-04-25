@@ -10,8 +10,8 @@ import java.time.LocalDate;
 
 @Entity
 @Immutable
-@Table(name = "SUMMARIZED_ACCOUNT_ENTRY_BY_MONTH")
-public class SummarizedAccountEntry implements Comparable<SummarizedAccountEntry>{
+@Table(name = "LATEST_MONTHLY_ACCOUNT_ENTRY_VIEW")
+public class LatestMonthlyAccountEntry implements Comparable<LatestMonthlyAccountEntry>{
 
     @Id
     private Long entryId;
@@ -40,9 +40,9 @@ public class SummarizedAccountEntry implements Comparable<SummarizedAccountEntry
         return marketValue;
     }
 
-    public SummarizedAccountEntry () {};
+    public LatestMonthlyAccountEntry() {};
 
-    public SummarizedAccountEntry (LocalDate entryDate, BigDecimal bookValue, BigDecimal marketValue) {
+    public LatestMonthlyAccountEntry(LocalDate entryDate, BigDecimal bookValue, BigDecimal marketValue) {
         this.entryDate = entryDate;
         this.bookValue = bookValue;
         this.marketValue = marketValue;
@@ -51,7 +51,7 @@ public class SummarizedAccountEntry implements Comparable<SummarizedAccountEntry
     }
 
     @Override
-    public int compareTo(SummarizedAccountEntry o) {
+    public int compareTo(LatestMonthlyAccountEntry o) {
         if (this.equals(o))
             return 0;
         else
@@ -61,7 +61,7 @@ public class SummarizedAccountEntry implements Comparable<SummarizedAccountEntry
     @Override
     public boolean equals (Object o) {
 
-        if (o instanceof SummarizedAccountEntry s) {
+        if (o instanceof LatestMonthlyAccountEntry s) {
             if (!getEntryDate().equals(s.getEntryDate()))
                 return false;
             if (!getAccountId().equals(s.getAccountId()))

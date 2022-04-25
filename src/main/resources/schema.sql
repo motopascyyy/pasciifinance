@@ -16,7 +16,7 @@ create table ACCOUNT
     INSTITUTION            VARCHAR(255),
     INSTITUTION_ACCOUNT_ID VARCHAR(255),
     JOINT_ACCOUNT          BOOLEAN not null,
-    constraint UK5KQ42CN79NSD1LF4SEJXG644H
+    constraint UQ_Account_Inst_AccountLable
         unique (INSTITUTION, ACCOUNT_LABEL)
 );
 
@@ -36,26 +36,9 @@ create table ACCOUNT_ENTRY
     INTERNATIONAL_EQT_PCT   DECIMAL(6, 5),
     OTHER_PCT               DECIMAL(6, 5),
     US_EQT_PCT              DECIMAL(6, 5),
-    constraint UKKVDLOO9N8BR04XKE2U7MSFCPI
+    constraint UQ_AccountEntry_EntryDate_AccountId
         unique (ENTRY_DATE, ACCOUNT_ID),
-    constraint FKHCCHQMVQ6VQBE3ECG303CR68U
-        foreign key (ACCOUNT_ID) references ACCOUNT (ID)
-);
-
-create table ACCOUNT_ALLOCATION_ENTRY
-(
-    ID                    BIGINT not null
-        primary key,
-    CANADIAN_EQUITY       DECIMAL(19, 2),
-    CANADIAN_FIXED_INCOME DECIMAL(19, 2),
-    CASH_EQUIVALENT       DECIMAL(19, 2),
-    ENTRY_DATE            TIMESTAMP,
-    GLOBAL_FIXED_INCOME   DECIMAL(19, 2),
-    INTERNATIONAL_EQUITY  DECIMAL(19, 2),
-    OTHER_ASSETS          DECIMAL(19, 2),
-    US_EQUITY             DECIMAL(19, 2),
-    ACCOUNT_ID            BIGINT,
-    constraint FKSFL6K36DBD1DWLSCMUB6W8ORL
+    constraint FK_AccountEntry_Account
         foreign key (ACCOUNT_ID) references ACCOUNT (ID)
 );
 
@@ -74,30 +57,7 @@ create table SECURITY
     US_EQT_PCT              DECIMAL(5, 4)
 );
 
-
-create view LATEST_ACCOUNT_ENTRY as
-(select
-    max(id) as entry_id,
-    account_id,
-    to_char(entry_date, 'yyyy-mm-dd') as e_date
-from
-    account_entry
-group by
-    account_id,
-    e_date);
-
-CREATE VIEW LATEST_WEEKLY_ACCOUNT_ENTRY(ENTRY_ID, ACCOUNT_ID, E_DATE) AS
-SELECT
-    MAX(ID) AS ENTRY_ID,
-    ACCOUNT_ID,
-    TO_CHAR(ENTRY_DATE, 'yyyy-mm') AS E_DATE
-FROM
-    ACCOUNT_ENTRY
-GROUP BY
-    ACCOUNT_ID,
-    TO_CHAR(ENTRY_DATE, 'yyyy-mm');
-
-create view SUMMARIZED_ACCOUNT_ENTRY_BY_MONTH as
+create view LATEST_MONTHLY_ACCOUNT_ENTRY_VIEW as
 select latest.entry_date, latest.ENTRY_ID, ae.ACCOUNT_ID,
        CASE
            WHEN JOINT_ACCOUNT = 'TRUE' THEN BOOK_VALUE / 2

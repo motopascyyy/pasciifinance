@@ -1,13 +1,13 @@
 package com.pasciitools.pasciifinance.common;
 
-import com.pasciitools.pasciifinance.common.dto.GroupedResult;
+import com.pasciitools.pasciifinance.common.dto.SummedByDateAccountEntries;
 import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
-import com.pasciitools.pasciifinance.common.entity.SummarizedAccountEntry;
+import com.pasciitools.pasciifinance.common.entity.LatestMonthlyAccountEntry;
 import com.pasciitools.pasciifinance.common.repository.AccountEntryRepository;
 import com.pasciitools.pasciifinance.common.repository.AccountRepository;
-import com.pasciitools.pasciifinance.common.repository.SummarizedAccountEntryRepository;
-import org.apache.tomcat.jni.Local;
+import com.pasciitools.pasciifinance.common.repository.LatestMonthlyAccountEntryRepository;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -17,28 +17,25 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
-
 @DataJpaTest
 @ActiveProfiles("qa-file")
 @AutoConfigureTestDatabase(replace= AutoConfigureTestDatabase.Replace.NONE)
-public class SummarizedAccountEntryRepositoryIT {
+public class SummarizedAccountEntryRepositoryTest {
 
     @Autowired
     private TestEntityManager entityManager;
 
     @Autowired
-    private SummarizedAccountEntryRepository sumRepository;
+    private LatestMonthlyAccountEntryRepository sumRepository;
 
     @Autowired
     private AccountEntryRepository entryRepository;
@@ -48,12 +45,12 @@ public class SummarizedAccountEntryRepositoryIT {
     private JdbcTemplate jdbcTemplate;
 
     private boolean dateChecker (LocalDate date, int year, int month) {
-        if (date != null && date.getYear() == year && date.getMonthValue() == month)
-            return true;
-        return false;
+        return date != null &&
+                date.getYear() == year &&
+                date.getMonthValue() == month;
     }
 
-    private int findIndexInList(LocalDate date, List<SummarizedAccountEntry> list) {
+    private int findIndexInList(LocalDate date, List<LatestMonthlyAccountEntry> list) {
         int result = -1;
         for (int i = 0; i < list.size(); i++){
             var listEntry = list.get(i);
@@ -112,16 +109,16 @@ public class SummarizedAccountEntryRepositoryIT {
 
         var actualList = sumRepository.findAllByEntryDateBefore(now.toLocalDate());
         System.out.println("debug point");
-        for (SummarizedAccountEntry summarizedAccountEntry : actualList) {
-            var expectedEntry = findMatchingInMap(expectedMap, summarizedAccountEntry);
-            assertNotNull(expectedEntry, String.format("Null entry found trying to find a matching entry in the expected map for Account: %s and Entry ID: %s and Entry Date: %s", summarizedAccountEntry.getAccountId(), summarizedAccountEntry.getEntryId(), summarizedAccountEntry.getEntryDate()));
+        for (LatestMonthlyAccountEntry latestMonthlyAccountEntry : actualList) {
+            var expectedEntry = findMatchingInMap(expectedMap, latestMonthlyAccountEntry);
+            Assertions.assertNotNull(expectedEntry, String.format("Null entry found trying to find a matching entry in the expected map for Account: %s and Entry ID: %s and Entry Date: %s", latestMonthlyAccountEntry.getAccountId(), latestMonthlyAccountEntry.getEntryId(), latestMonthlyAccountEntry.getEntryDate()));
 
             if (expectedEntry.getAccount().isJointAccount()) {
-                assertEquals(expectedEntry.getBookValue().divide(BigDecimal.valueOf(2)).doubleValue(), summarizedAccountEntry.getBookValue().doubleValue(), String.format("Differences found for Account ID %s, Entry Date %s.", summarizedAccountEntry.getAccountId(), summarizedAccountEntry.getEntryDate()));
-                assertEquals(expectedEntry.getMarketValue().divide(BigDecimal.valueOf(2)).doubleValue(), summarizedAccountEntry.getMarketValue().doubleValue(), String.format("Differences found for Account ID %s, Entry Date %s.", summarizedAccountEntry.getAccountId(), summarizedAccountEntry.getEntryDate()));
+                Assertions.assertEquals(expectedEntry.getBookValue().divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP).doubleValue(), latestMonthlyAccountEntry.getBookValue().doubleValue(), String.format("Differences found for Account ID %s, Entry Date %s.", latestMonthlyAccountEntry.getAccountId(), latestMonthlyAccountEntry.getEntryDate()));
+                Assertions.assertEquals(expectedEntry.getMarketValue().divide(BigDecimal.valueOf(2)).doubleValue(), latestMonthlyAccountEntry.getMarketValue().doubleValue(), String.format("Differences found for Account ID %s, Entry Date %s.", latestMonthlyAccountEntry.getAccountId(), latestMonthlyAccountEntry.getEntryDate()));
             } else {
-                assertEquals(expectedEntry.getBookValue().doubleValue(), summarizedAccountEntry.getBookValue().doubleValue(), String.format("Differences found for Account ID %s, Entry Date %s.", summarizedAccountEntry.getAccountId(), summarizedAccountEntry.getEntryDate()));
-                assertEquals(expectedEntry.getMarketValue().doubleValue(), summarizedAccountEntry.getMarketValue().doubleValue(), String.format("Differences found for Account ID %s, Entry Date %s.", summarizedAccountEntry.getAccountId(), summarizedAccountEntry.getEntryDate()));
+                Assertions.assertEquals(expectedEntry.getBookValue().doubleValue(), latestMonthlyAccountEntry.getBookValue().doubleValue(), String.format("Differences found for Account ID %s, Entry Date %s.", latestMonthlyAccountEntry.getAccountId(), latestMonthlyAccountEntry.getEntryDate()));
+                Assertions.assertEquals(expectedEntry.getMarketValue().doubleValue(), latestMonthlyAccountEntry.getMarketValue().doubleValue(), String.format("Differences found for Account ID %s, Entry Date %s.", latestMonthlyAccountEntry.getAccountId(), latestMonthlyAccountEntry.getEntryDate()));
             }
         }
 
@@ -129,20 +126,18 @@ public class SummarizedAccountEntryRepositoryIT {
 
     private int getTotalCountFromMap (Map<String, List<AccountEntry>> entries) {
         var count = 0;
-        var iter = entries.keySet().iterator();
-        while (iter.hasNext()) {
-            String key = iter.next();
-            count+= entries.get(key).size();
+        for (String key : entries.keySet()) {
+            count += entries.get(key).size();
         }
         return count;
     }
 
-    private AccountEntry findMatchingInMap (Map<String, List<AccountEntry>> entries, SummarizedAccountEntry summarizedAccountEntry) {
-        LocalDate entryDateKey = summarizedAccountEntry.getEntryDate();
+    private AccountEntry findMatchingInMap (Map<String, List<AccountEntry>> entries, LatestMonthlyAccountEntry latestMonthlyAccountEntry) {
+        LocalDate entryDateKey = latestMonthlyAccountEntry.getEntryDate();
         String key = entryDateKey.getYear() + "-" + entryDateKey.getMonthValue();
         var entryList= entries.get(key);
         for (AccountEntry entry : entryList) {
-            if (summarizedAccountEntry.getAccountId().equals(entry.getAccount().getId()))
+            if (latestMonthlyAccountEntry.getAccountId().equals(entry.getAccount().getId()))
                 return entry;
         }
         return null;
@@ -152,13 +147,13 @@ public class SummarizedAccountEntryRepositoryIT {
     public void testGroupedSummaries () {
         var summarizedValues = sumRepository.findSummarizedValues();
         var accountCount = accountRepository.count();
-        assertNotNull(summarizedValues);
+        Assertions.assertNotNull(summarizedValues);
 
         Map<String, List<AccountEntry>> monthlyResults = getMapOfMonthlyEntries();
 
 
-        for (GroupedResult groupedResult : summarizedValues) {
-            String key = groupedResult.getEntryDate().getYear() + "-" + groupedResult.getEntryDate().getMonthValue();
+        for (SummedByDateAccountEntries summedByDateAccountEntries : summarizedValues) {
+            String key = summedByDateAccountEntries.getEntryDate().getYear() + "-" + summedByDateAccountEntries.getEntryDate().getMonthValue();
             List<AccountEntry> currentMonthResults = monthlyResults.get(key);
             var bookValue = BigDecimal.ZERO;
             var marketValue = BigDecimal.ZERO;
@@ -168,8 +163,8 @@ public class SummarizedAccountEntryRepositoryIT {
                  * We know that entries that aren't in this month won't be captured in the view logic.
                  * In that situation, records need to be rolled-forward automatically.
                  */
-                if (entry.getEntryDate().getYear() == groupedResult.getEntryDate().getYear() &&
-                        entry.getEntryDate().getMonthValue() == groupedResult.getEntryDate().getMonthValue()) {
+                if (entry.getEntryDate().getYear() == summedByDateAccountEntries.getEntryDate().getYear() &&
+                        entry.getEntryDate().getMonthValue() == summedByDateAccountEntries.getEntryDate().getMonthValue()) {
                     if (entry.getAccount().isJointAccount()) {
                         bookValue = bookValue.add(entry.getBookValue().divide(BigDecimal.valueOf(2)));
                         marketValue = marketValue.add(entry.getMarketValue().divide(BigDecimal.valueOf(2)));
@@ -179,8 +174,8 @@ public class SummarizedAccountEntryRepositoryIT {
                     }
                 }
             }
-            assertEquals(bookValue.doubleValue(), groupedResult.getBookValue().doubleValue(), String.format("Could not match the book value on date %s.\n%s", groupedResult.getEntryDate(), getListOfBookValues(currentMonthResults)));
-            assertEquals(marketValue.doubleValue(), groupedResult.getMarketValue().doubleValue(), String.format("Could not match the market value on date %s. \n%s", groupedResult.getEntryDate(), getListOfMarketValues(currentMonthResults)));
+            Assertions.assertEquals(bookValue.doubleValue(), summedByDateAccountEntries.getBookValue().doubleValue(), String.format("Could not match the book value on date %s.\n%s", summedByDateAccountEntries.getEntryDate(), getListOfBookValues(currentMonthResults)));
+            Assertions.assertEquals(marketValue.doubleValue(), summedByDateAccountEntries.getMarketValue().doubleValue(), String.format("Could not match the market value on date %s. \n%s", summedByDateAccountEntries.getEntryDate(), getListOfMarketValues(currentMonthResults)));
         }
     }
 

@@ -1,16 +1,16 @@
 package com.pasciitools.pasciifinance.restreservice;
 
 import com.pasciitools.pasciifinance.common.dto.EntryAllocation;
-import com.pasciitools.pasciifinance.common.dto.GroupedResult;
+import com.pasciitools.pasciifinance.common.dto.SummedByDateAccountEntries;
 import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.entity.Security;
-import com.pasciitools.pasciifinance.common.entity.SummarizedAccountEntry;
+import com.pasciitools.pasciifinance.common.entity.LatestMonthlyAccountEntry;
 import com.pasciitools.pasciifinance.common.exception.NumberOutOfRangeException;
 import com.pasciitools.pasciifinance.common.repository.AccountEntryRepository;
 import com.pasciitools.pasciifinance.common.repository.AccountRepository;
 import com.pasciitools.pasciifinance.common.repository.SecurityRepository;
-import com.pasciitools.pasciifinance.common.repository.SummarizedAccountEntryRepository;
+import com.pasciitools.pasciifinance.common.repository.LatestMonthlyAccountEntryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +38,7 @@ public class RestService {
     private AccountEntryRepository entryRepo;
 
     @Autowired
-    private SummarizedAccountEntryRepository summarizedAccountEntryRepository;
+    private LatestMonthlyAccountEntryRepository latestMonthlyAccountEntryRepository;
 
     @Autowired
     private AccountRepository accountRepo;
@@ -100,9 +100,9 @@ public class RestService {
 
 
     @GetMapping("/time_series_summary")
-    public List<GroupedResult> getTimeSeriesSummary(@RequestParam
+    public List<SummedByDateAccountEntries> getTimeSeriesSummary(@RequestParam
                                                                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDate startDate) {
-        return summarizedAccountEntryRepository.findAccountEntriesByEntryDateAfter(startDate);
+        return latestMonthlyAccountEntryRepository.findAccountEntriesByEntryDateAfter(startDate);
     }
 
     private String getFormattedAsCurrency(BigDecimal dec) {
@@ -111,9 +111,9 @@ public class RestService {
     }
 
     @GetMapping("/account_time_series_summary/{accountId}")
-    public List<SummarizedAccountEntry> getTimeSeriesSummaryForAccount(@PathVariable Long accountId) {
+    public List<LatestMonthlyAccountEntry> getTimeSeriesSummaryForAccount(@PathVariable Long accountId) {
 //        return summarizedAccountEntryRepository.findAccountEntriesForAccountByEntryDateAfter(accountId);
-        return summarizedAccountEntryRepository.findSummarizedAccountEntriesByAccountId(accountId);
+        return latestMonthlyAccountEntryRepository.findSummarizedAccountEntriesByAccountId(accountId);
     }
 
     @GetMapping("/accounts")
