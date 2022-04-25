@@ -9,6 +9,8 @@ import com.pasciitools.pasciifinance.common.repository.AccountRepository;
 import com.pasciitools.pasciifinance.common.repository.LatestMonthlyAccountEntryRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -29,7 +31,9 @@ import java.util.Map;
 @DataJpaTest
 @ActiveProfiles("qa-file")
 @AutoConfigureTestDatabase(replace= AutoConfigureTestDatabase.Replace.NONE)
-public class SummarizedAccountEntryRepositoryTest {
+public class LatestMonthlyAccountEntryTest {
+
+    private static final Logger log = LoggerFactory.getLogger(LatestMonthlyAccountEntryTest.class);
 
     @Autowired
     private TestEntityManager entityManager;
@@ -94,7 +98,7 @@ public class SummarizedAccountEntryRepositoryTest {
             for (Account a : allAccounts) {
                 var entry = entryRepository.findTopByAccountAndEntryDateLessThanEqualOrderByEntryDateDesc(a, eom);
                 if (entry == null) {
-                    System.out.println(String.format("Unable to find results for account %s (%s) with EOM %s. Creating dummy entry.", a, a.getId(), eom));
+                    log.debug(String.format("Unable to find results for account %s (%s) with EOM %s. Creating dummy entry.", a, a.getId(), eom));
                     entry = new AccountEntry();
                     entry.setAccount(a);
                     entry.setBookValue(0);
@@ -108,7 +112,6 @@ public class SummarizedAccountEntryRepositoryTest {
         }
 
         var actualList = sumRepository.findAllByEntryDateBefore(now.toLocalDate());
-        System.out.println("debug point");
         for (LatestMonthlyAccountEntry latestMonthlyAccountEntry : actualList) {
             var expectedEntry = findMatchingInMap(expectedMap, latestMonthlyAccountEntry);
             Assertions.assertNotNull(expectedEntry, String.format("Null entry found trying to find a matching entry in the expected map for Account: %s and Entry ID: %s and Entry Date: %s", latestMonthlyAccountEntry.getAccountId(), latestMonthlyAccountEntry.getEntryId(), latestMonthlyAccountEntry.getEntryDate()));
@@ -221,7 +224,7 @@ public class SummarizedAccountEntryRepositoryTest {
             for (Account a : allAccounts) {
                 var entry = entryRepository.findTopByAccountAndEntryDateLessThanEqualOrderByEntryDateDesc(a, eom);
                 if (entry == null) {
-                    System.out.println(String.format("Unable to find results for account %s (%s) with EOM %s. Creating dummy entry.", a, a.getId(), eom));
+                    log.debug(String.format("Unable to find results for account %s (%s) with EOM %s. Creating dummy entry.", a, a.getId(), eom));
                     entry = new AccountEntry();
                     entry.setAccount(a);
                     entry.setBookValue(0);
