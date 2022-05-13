@@ -39,3 +39,4 @@ out/
 
 /common/gradle/wrapper/gradle-wrapper.jar
 /rest/gradle/wrapper/gradle-wrapper.jar
+/nohup.out
