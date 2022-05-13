@@ -1,6 +1,6 @@
 package com.pasciitools.pasciifinance.batch.config;
 
-import com.pasciitools.pasciifinance.batch.easywebcrawler.TDEasyWebItemReader;
+import com.pasciitools.pasciifinance.batch.tdcrawler.TDEasyWebItemReader;
 import com.pasciitools.pasciifinance.batch.listener.JobCompletionNotificationListener;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.repository.AccountEntryRepository;
