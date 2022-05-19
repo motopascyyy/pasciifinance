@@ -6,34 +6,33 @@ import com.pasciitools.pasciifinance.common.entity.Security;
 import com.pasciitools.pasciifinance.common.exception.SecurityNotFoundException;
 import com.pasciitools.pasciifinance.common.service.AccountService;
 import com.pasciitools.pasciifinance.common.service.SecurityService;
+import org.apache.commons.lang3.StringUtils;
+import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.*;
-import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.remote.RemoteWebDriver;
-import org.openqa.selenium.support.ui.ExpectedCondition;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ParseException;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.text.NumberFormat;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 
-public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
+public class TDWebBrokerItemReader extends TDItemReader implements ItemReader<AccountEntry> {
 
 
     private AccountService accountService;
     private SecurityService secService;
     private final NumberFormat nfCAD = NumberFormat.getCurrencyInstance(Locale.CANADA);
-    private WebDriver driver;
-    private WebDriverWait wait;
     private final Logger log = LoggerFactory.getLogger(TDWebBrokerItemReader.class);
 
     private final String webBrokerURL;
@@ -46,23 +45,29 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
     private static final String CHILDREN_XPATH_ONE_DOWN = "./*";
     private static final String CHILDREN_XPATH_ENTIRE_LIST = ".//*";
     private final By holdingTab = By.cssSelector("td-wb-tab[tdwbtabstatename=\"page.account.holdings\"]");
-    private static final String TWO_FA_DIALOG_ID = "mat-dialog-0";
 
     private List<AccountEntry> entries;
     private Iterator<AccountEntry> iter;
 
+    @Value("${usernameFieldOptions}")
+    private String usernameFieldOptions;
+
+    @Value("${webdriver.chrome.driver}")
+    private String chromeDriverLocation;
+
+
     @Override
     public AccountEntry read() throws ParseException, MalformedURLException, InterruptedException {
-        if (userName == null || password == null)
+        if (StringUtils.isBlank(userName) || StringUtils.isBlank(password))
             throw new InterruptedException("Credentials not provided. Crashing execution");
 
         if (entries == null) {
             log.debug("Collecting all the data from WebBroker. This part will take a while. Subsequent steps will be much faster.");
-            String killMessage = "Killing job. Caused by:\n";
+            String killMessage = "Killing job.";
             try {
                 driver = getDriver();
-                loginDriver();
-                wait = new WebDriverWait(driver, 10);
+                loginDriver(webBrokerURL, userName, password);
+                wait = new WebDriverWait(driver, Duration.ofSeconds(10));
                 waitFor2FA();
                 WebElement dropDownCarret = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className(CARET)));
                 log.debug("Login successful. Proceeding to data collection.");
@@ -79,12 +84,12 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
                 }
             } catch (MalformedURLException e) {
                 String message = "URL was malformed. Could not establish connection. " +
-                        killMessage + e.getMessage();
+                        killMessage;
                 logAndKillDriver(e, message);
                 throw new MalformedURLException(message);
             } catch (InterruptedException | SecurityNotFoundException e) {
                 String message = "Thread interrupted during execution. " +
-                        killMessage + e.getMessage() ;
+                        killMessage;
                 logAndKillDriver(e, message);
                 Thread.currentThread().interrupt();
                 throw new InterruptedException(message);
@@ -104,26 +109,6 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
             entries = null;
         }
         return nextEntry;
-    }
-
-    private void logAndKillDriver (Exception e, String message) {
-        log.error(message, e);
-        if (driver != null) {
-            driver.quit();
-            driver = null;
-        }
-    }
-
-    private void waitFor2FA () {
-
-        try {
-            wait.until(ExpectedConditions.elementToBeClickable(By.id(TWO_FA_DIALOG_ID)));
-            log.debug("Found 2FA dialog. User expected to enter to manually handle the 2FA code entry since TD still uses SMS like luddites.");
-            var twoFAWait = new WebDriverWait(driver, 120, 1000);
-            twoFAWait.until((ExpectedCondition<Boolean>) d -> (d.findElements(By.id(TWO_FA_DIALOG_ID)).isEmpty()));
-        } catch(NoSuchElementException | TimeoutException e) {
-            log.debug("Did not find 2FA dialog. Exception means we don't need to deal with 2FA and cna proceed normally.");
-        }
     }
 
     private void dismissMessageDialog() {
@@ -268,28 +253,6 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
 
     }
 
-    private void loginDriver () {
-        driver.get(webBrokerURL);
-        var byUserName100 = By.id("username");
-        var byUserName101 = By.id("username101");
-        boolean useUserName100 = !driver.findElements(byUserName100).isEmpty();
-        WebElement usernameField = useUserName100 ? driver.findElement(byUserName100) : driver.findElement(byUserName101);
-        String message = String.format("Using field '%s' of tag name <%s /> to inject data", useUserName100 ? "username100" : "username101", usernameField.getTagName());
-        log.info(message);
-        WebElement passwordField = driver.findElement(By.id("uapPassword"));
-        usernameField.sendKeys(userName);
-        passwordField.sendKeys(password);
-        click(By.cssSelector(".form-group > button"));
-    }
-
-    public WebDriver getDriver () throws MalformedURLException {
-        ChromeOptions options = new ChromeOptions();
-
-        return new RemoteWebDriver(
-                new URL("http://127.0.0.1:9515"),
-                options);
-    }
-
     private double getValue (By by) throws NoSuchElementException{
         double result = 0;
         WebElement totalValueDiv = null;
@@ -381,24 +344,5 @@ public class TDWebBrokerItemReader implements ItemReader<AccountEntry> {
             }
         }
         return allocationPctMap;
-    }
-
-
-    private void click(By by) {
-        try {
-            WebElement button = driver.findElement(by);
-            click(button);
-        } catch (NoSuchElementException e){
-            log.error(String.format("Could not find the element: %s", by.toString()), e);
-        }
-    }
-
-    private void click (WebElement we) {
-        try {
-            we.click();
-        } catch (NoSuchElementException e){
-            log.error(String.format("Could not find the element: %s.%nNested Exception: %s", we.toString(), e.getMessage()), e);
-
-        }
     }
 }
