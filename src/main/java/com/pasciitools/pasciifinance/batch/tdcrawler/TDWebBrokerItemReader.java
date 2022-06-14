@@ -1,5 +1,6 @@
 package com.pasciitools.pasciifinance.batch.tdcrawler;
 
+import com.pasciitools.pasciifinance.batch.Site;
 import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.entity.Security;
@@ -35,8 +36,6 @@ public class TDWebBrokerItemReader extends TDItemReader implements ItemReader<Ac
     private final NumberFormat nfCAD = NumberFormat.getCurrencyInstance(Locale.CANADA);
     private final Logger log = LoggerFactory.getLogger(TDWebBrokerItemReader.class);
 
-    private final String webBrokerURL;
-
     private final String userName;
     private final String password;
 
@@ -49,12 +48,6 @@ public class TDWebBrokerItemReader extends TDItemReader implements ItemReader<Ac
     private List<AccountEntry> entries;
     private Iterator<AccountEntry> iter;
 
-    @Value("${usernameFieldOptions}")
-    private String usernameFieldOptions;
-
-    @Value("${webdriver.chrome.driver}")
-    private String chromeDriverLocation;
-
 
     @Override
     public AccountEntry read() throws ParseException, MalformedURLException, InterruptedException {
@@ -63,41 +56,35 @@ public class TDWebBrokerItemReader extends TDItemReader implements ItemReader<Ac
 
         if (entries == null) {
             log.debug("Collecting all the data from WebBroker. This part will take a while. Subsequent steps will be much faster.");
-            String killMessage = "Killing job.";
             try {
-                driver = getDriver();
-                loginDriver(webBrokerURL, userName, password);
+                sharedWebDriver = SharedWebDriver.getInstance();
+                driver = sharedWebDriver.getDriver();
+                sharedWebDriver.loginDriver(Site.TD_WEBBROKER, userName, password);
                 wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-                waitFor2FA();
-                WebElement dropDownCarret = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className(CARET)));
                 log.debug("Login successful. Proceeding to data collection.");
                 dismissMessageDialog();
-                click(dropDownCarret);
+                WebElement dropDownCarret = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className(CARET)));
+                sharedWebDriver.click(dropDownCarret);
                 WebElement divOfAccounts = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("td-wb-dropdown__panel")));
                 List<WebElement> accountDivs = divOfAccounts.findElements(By.xpath(CHILDREN_XPATH_ONE_DOWN));
                 entries = collectData(accountDivs);
                 iter = entries.iterator();
-                if (driver != null) {
-                    driver.quit();
-                    driver = null;
-                    log.debug("Quitting browser since no longer necessary to read entries. Everything collected from Web Broker.");
-                }
-            } catch (MalformedURLException e) {
-                String message = "URL was malformed. Could not establish connection. " +
-                        killMessage;
-                logAndKillDriver(e, message);
-                throw new MalformedURLException(message);
             } catch (InterruptedException | SecurityNotFoundException e) {
-                String message = "Thread interrupted during execution. " +
-                        killMessage;
-                logAndKillDriver(e, message);
+                String message = "Thread interrupted during execution. Killing job.";
+                log.error(message, e);
                 Thread.currentThread().interrupt();
                 throw new InterruptedException(message);
             } catch (TimeoutException e) {
-                String message = "Timeout Exception during execution. " +
-                        killMessage;
-                logAndKillDriver(e, message);
+                String message = "Timeout Exception during execution. Killing job.";
+                log.error(message, e);
                 throw new TimeoutException(message, e);
+            } finally {
+                //TODO figure out way to only kill the driver when appropriate (e.g. when not triggered via a chain event)
+                if (driver != null) {
+                    SharedWebDriver.getInstance().killDriver();
+                    log.debug("Quitting browser since no longer necessary to read entries. Everything collected from Web Broker.");
+                }
+
             }
         }
 
@@ -113,17 +100,16 @@ public class TDWebBrokerItemReader extends TDItemReader implements ItemReader<Ac
 
     private void dismissMessageDialog() {
         if (!driver.findElements(By.id("markAsReadAndDismiss")).isEmpty()) {
-            click(driver.findElement(By.id("markAsReadAndDismiss")));
+            sharedWebDriver.click(driver.findElement(By.id("markAsReadAndDismiss")));
             log.info("There was a message that had to be dismissed. Cleared this item so that we could proceed");
         }
     }
 
-    public TDWebBrokerItemReader(String userName, String password, AccountService accountService, SecurityService secService, String url) {
+    public TDWebBrokerItemReader(String userName, String password, AccountService accountService, SecurityService secService) {
 
         this.userName = userName;
         this.password = password;
         this.accountService = accountService;
-        this.webBrokerURL = url;
         this.secService = secService;
 
     }
@@ -134,12 +120,12 @@ public class TDWebBrokerItemReader extends TDItemReader implements ItemReader<Ac
         var currentDate = LocalDateTime.now();
         for (int i = 0; i < accountDivs.size(); i++) {
             if (i != 0)
-                click(driver.findElement(By.className(CARET)));
+                sharedWebDriver.click(driver.findElement(By.className(CARET)));
             String dropdownRowId = "td-wb-dropdown-option-" + i;
             WebElement containerDiv = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("td-wb-dropdown__panel")));
-            click(containerDiv.findElement(By.id(dropdownRowId)));
+            sharedWebDriver.click(containerDiv.findElement(By.id(dropdownRowId)));
             WebElement accountIdSpan = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("td-wb-account-label__number")));
-            click(wait.until(ExpectedConditions.visibilityOfElementLocated(holdingTab)));
+            sharedWebDriver.click(wait.until(ExpectedConditions.visibilityOfElementLocated(holdingTab)));
             AccountEntry accountEntry = new AccountEntry();
 
             Account acc = accountService.getAccountFromAccountNumber(accountIdSpan.getText());
@@ -314,7 +300,7 @@ public class TDWebBrokerItemReader extends TDItemReader implements ItemReader<Ac
     private Map<String, BigDecimal> getAllAllocationContainers () {
         By assetAllocationTab = By.cssSelector("td-wb-tab[tdwbtabstatename=\"page.account.asset-allocations\"]");
         WebElement we = wait.until(ExpectedConditions.visibilityOfElementLocated(assetAllocationTab));
-        click(we.findElement(By.tagName("a")));
+        sharedWebDriver.click(we.findElement(By.tagName("a")));
 
         Map<String, BigDecimal> allocationPctMap = new HashMap<>();
         WebElement cdnEqtDiv = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("td-wb-aria-asset-category-name-CANADIAN_EQUITIES")));

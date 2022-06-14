@@ -55,7 +55,7 @@ public class TDEasyWebConfiguration {
 
     @Bean
     public TDEasyWebItemReader easyWebReader() {
-        return new TDEasyWebItemReader(userName, password, accountService, easyWebUrl);
+        return new TDEasyWebItemReader(userName, password, accountService);
     }
 
     @Bean
