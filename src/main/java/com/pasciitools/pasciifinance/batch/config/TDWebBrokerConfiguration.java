@@ -59,7 +59,7 @@ public class TDWebBrokerConfiguration {
 
     @Bean
     public TDWebBrokerItemReader reader() {
-        return new TDWebBrokerItemReader(userName, password, accountService, securityService, webBrokerUrl);
+        return new TDWebBrokerItemReader(userName, password, accountService, securityService);
     }
 
     @Bean

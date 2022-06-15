@@ -1,24 +1,26 @@
 package com.pasciitools.pasciifinance.restreservice;
 
-import org.apache.commons.collections4.ListUtils;
-import org.apache.commons.exec.util.StringUtils;
+import com.pasciitools.pasciifinance.batch.Site;
+import com.pasciitools.pasciifinance.batch.tdcrawler.SharedWebDriver;
+import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.*;
 import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
-import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
-import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 public class BatchRestService {
@@ -102,5 +104,26 @@ public class BatchRestService {
     }
 
 
+    @PostMapping("/initiateBrowserDriver")
+    public ResponseEntity<String> initiateBrowserDriver () {
+        WebDriver sharedDriver = SharedWebDriver.getInstance().getDriver();
+        if (sharedDriver != null)
+            return ResponseEntity.ok().body("Shared Web Driver started.");
+        else {
+            return ResponseEntity.internalServerError().body("Could not start SharedWebDriver");
+        }
+    }
 
+    @GetMapping("/login-to-td")
+    public ResponseEntity<String> loginDriver (@RequestParam Site site, @RequestParam String username, @RequestParam String password) {
+
+        SharedWebDriver.getInstance().loginDriver(site, username, password);
+        return ResponseEntity.ok().body("Successfully logged into " + site);
+
+    }
+
+    @GetMapping("/enter2FA")
+    public ResponseEntity<String> enter2FA (@RequestParam String twoFA) {
+        return ResponseEntity.internalServerError().body("Failed to complete 2FA insertion");
+    }
 }

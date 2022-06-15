@@ -1,5 +1,6 @@
 package com.pasciitools.pasciifinance.batch.tdcrawler;
 
+import com.pasciitools.pasciifinance.batch.Site;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.service.AccountService;
 import org.openqa.selenium.By;
@@ -32,8 +33,6 @@ public class TDEasyWebItemReader extends TDItemReader implements ItemReader<Acco
     private final NumberFormat nfCAD = NumberFormat.getCurrencyInstance(Locale.CANADA);
     private final Logger log = LoggerFactory.getLogger(TDEasyWebItemReader.class);
 
-    private final String webBrokerURL;
-
     private final String userName;
     private final String password;
 
@@ -43,21 +42,17 @@ public class TDEasyWebItemReader extends TDItemReader implements ItemReader<Acco
     @Value("${usernameFieldOptions}")
     private String usernameFieldOptions;
 
-    @Value("${webdriver.chrome.driver}")
-    private String chromeDriverLocation;
-
 
     @Override
     public AccountEntry read() throws UnexpectedInputException, ParseException, MalformedURLException, InterruptedException {
 
         if (entries == null) {
-            log.debug("Collecting all the data from WebBroker. This part will take a while. Subsequent steps will be much faster.");
-            String killMessage = "Killing job.";
+            log.debug("Collecting all the data from EasyWeb. This part will take a while. Subsequent steps will be much faster.");
             try {
-                driver = getDriver();
-                loginDriver(webBrokerURL, userName, password);
+                sharedWebDriver = SharedWebDriver.getInstance();
+                driver = sharedWebDriver.getDriver();
+                sharedWebDriver.loginDriver(Site.TD_EASYWEB, userName, password);
                 wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-                waitFor2FA();
                 boolean redirectCompleted = wait.until(ExpectedConditions.urlToBe("https://easyweb.td.com/waw/ezw/webbanking"));
                 if (redirectCompleted){
                     driver.switchTo().frame("tddetails");
@@ -67,30 +62,24 @@ public class TDEasyWebItemReader extends TDItemReader implements ItemReader<Acco
                     List<WebElement> rows = bankingDiv.findElements(By.tagName("tr"));
                     entries = collectData(rows);
                     iter = entries.iterator();
-                    if (driver != null) {
-                        driver.quit();
-                        driver = null;
-                        log.debug("Quitting browser since no longer necessary to read entries. Everything collected from Web Broker.");
-                    }
                 } else {
                     throw new TimeoutException("EasyWeb redirect did not complete in time. Exiting");
                 }
-            } catch (MalformedURLException e) {
-                String message = "URL was malformed. Could not establish connection. " +
-                        killMessage;
-                logAndKillDriver(e, message);
-                throw new MalformedURLException(message);
             } catch (InterruptedException e) {
-                String message = "Thread interrupted during execution. " +
-                        killMessage;
-                logAndKillDriver(e, message);
+                String message = "Thread interrupted during execution. Killing job.";
+                log.error(message, e);
                 Thread.currentThread().interrupt();
                 throw new InterruptedException(message);
             } catch (TimeoutException e) {
-                String message = "Timeout Exception during execution. " +
-                        killMessage;
-                logAndKillDriver(e, message);
+                String message = "Timeout Exception during execution. Killing job.";
+                log.error(message, e);
                 throw new TimeoutException(message, e);
+            } finally {
+                if (driver != null) {
+                    SharedWebDriver.getInstance().killDriver();
+                    log.debug("Quitting browser since no longer necessary to read entries.");
+                }
+
             }
         }
 
@@ -104,12 +93,11 @@ public class TDEasyWebItemReader extends TDItemReader implements ItemReader<Acco
         return nextEntry;
     }
 
-    public TDEasyWebItemReader(String userName, String password, AccountService accountService, String url) {
+    public TDEasyWebItemReader(String userName, String password, AccountService accountService) {
 
         this.userName = userName;
         this.password = password;
         this.accountService = accountService;
-        this.webBrokerURL = url;
         if (userName == null || password == null)
             throw new RuntimeException("Credentials not provided. Crashing execution");
 
