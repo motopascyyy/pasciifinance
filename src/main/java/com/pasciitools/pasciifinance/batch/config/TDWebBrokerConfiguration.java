@@ -2,6 +2,7 @@ package com.pasciitools.pasciifinance.batch.config;
 
 import com.pasciitools.pasciifinance.batch.listener.JobCompletionNotificationListener;
 import com.pasciitools.pasciifinance.batch.tdcrawler.TDWebBrokerItemReader;
+import com.pasciitools.pasciifinance.common.configuration.TDConfig;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.repository.AccountEntryRepository;
 import com.pasciitools.pasciifinance.common.repository.AccountRepository;
@@ -46,20 +47,17 @@ public class TDWebBrokerConfiguration {
     private AccountService accountService;
 
     @Autowired
+    private TDConfig tdConfig;
+
+    @Autowired
     private SecurityService securityService;
-
-    @Value("${webbroker.userName}")
-    private String userName;
-
-    @Value("${webbroker.password}")
-    private String password;
 
     @Value("${webbroker.url}")
     private String webBrokerUrl;
 
     @Bean
     public TDWebBrokerItemReader reader() {
-        return new TDWebBrokerItemReader(userName, password, accountService, securityService);
+        return new TDWebBrokerItemReader(accountService, securityService, tdConfig);
     }
 
     @Bean

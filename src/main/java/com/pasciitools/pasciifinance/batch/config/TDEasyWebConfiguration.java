@@ -2,6 +2,7 @@ package com.pasciitools.pasciifinance.batch.config;
 
 import com.pasciitools.pasciifinance.batch.tdcrawler.TDEasyWebItemReader;
 import com.pasciitools.pasciifinance.batch.listener.JobCompletionNotificationListener;
+import com.pasciitools.pasciifinance.common.configuration.TDConfig;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.repository.AccountEntryRepository;
 import com.pasciitools.pasciifinance.common.repository.AccountRepository;
@@ -44,18 +45,13 @@ public class TDEasyWebConfiguration {
     @Autowired
     private AccountService accountService;
 
-    @Value("${easyweb.userName}")
-    private String userName;
+    @Autowired
+    private TDConfig tdConfig;
 
-    @Value("${easyweb.password}")
-    private String password;
-
-    @Value("${easyweb.url}")
-    private String easyWebUrl;
 
     @Bean
     public TDEasyWebItemReader easyWebReader() {
-        return new TDEasyWebItemReader(userName, password, accountService);
+        return new TDEasyWebItemReader(accountService, tdConfig);
     }
 
     @Bean

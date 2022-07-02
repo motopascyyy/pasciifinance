@@ -1,6 +1,6 @@
 package com.pasciitools.pasciifinance.batch.tdcrawler;
 
-import com.pasciitools.pasciifinance.batch.Site;
+import com.pasciitools.pasciifinance.common.configuration.TDConfig;
 import com.pasciitools.pasciifinance.common.entity.Account;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.entity.Security;
@@ -18,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ParseException;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -32,13 +31,10 @@ public class TDWebBrokerItemReader extends TDItemReader implements ItemReader<Ac
 
 
     private AccountService accountService;
+    private TDConfig tdConfig;
     private SecurityService secService;
     private final NumberFormat nfCAD = NumberFormat.getCurrencyInstance(Locale.CANADA);
     private final Logger log = LoggerFactory.getLogger(TDWebBrokerItemReader.class);
-
-    private final String userName;
-    private final String password;
-
     private static final String CARET = "td-wb-dropdown-toggle__caret";
     private static final String PARENT_XPATH = "./..";
     private static final String CHILDREN_XPATH_ONE_DOWN = "./*";
@@ -51,15 +47,17 @@ public class TDWebBrokerItemReader extends TDItemReader implements ItemReader<Ac
 
     @Override
     public AccountEntry read() throws ParseException, MalformedURLException, InterruptedException {
-        if (StringUtils.isBlank(userName) || StringUtils.isBlank(password))
-            throw new InterruptedException("Credentials not provided. Crashing execution");
 
         if (entries == null) {
             log.debug("Collecting all the data from WebBroker. This part will take a while. Subsequent steps will be much faster.");
             try {
                 sharedWebDriver = SharedWebDriver.getInstance();
                 driver = sharedWebDriver.getDriver();
-                sharedWebDriver.loginDriver(Site.TD_WEBBROKER, userName, password);
+                if (StringUtils.isEmpty(driver.getCurrentUrl())) {
+                    sharedWebDriver.loginDriver(tdConfig.getWebbrokerUserName(), tdConfig.getWebbrokerPassword(), tdConfig.getWebbrokerUrl(), tdConfig.getWebbrokerSuccessLoginUrl(), tdConfig.getUsernameFieldOptions().split(","));
+                } else if (!tdConfig.getWebbrokerSuccessLoginUrl().equals(driver.getCurrentUrl())){
+                    driver.get(tdConfig.getWebbrokerNavigate());
+                }
                 wait = new WebDriverWait(driver, Duration.ofSeconds(10));
                 log.debug("Login successful. Proceeding to data collection.");
                 dismissMessageDialog();
@@ -78,13 +76,6 @@ public class TDWebBrokerItemReader extends TDItemReader implements ItemReader<Ac
                 String message = "Timeout Exception during execution. Killing job.";
                 log.error(message, e);
                 throw new TimeoutException(message, e);
-            } finally {
-                //TODO figure out way to only kill the driver when appropriate (e.g. when not triggered via a chain event)
-                if (driver != null) {
-                    SharedWebDriver.getInstance().killDriver();
-                    log.debug("Quitting browser since no longer necessary to read entries. Everything collected from Web Broker.");
-                }
-
             }
         }
 
@@ -105,13 +96,10 @@ public class TDWebBrokerItemReader extends TDItemReader implements ItemReader<Ac
         }
     }
 
-    public TDWebBrokerItemReader(String userName, String password, AccountService accountService, SecurityService secService) {
-
-        this.userName = userName;
-        this.password = password;
+    public TDWebBrokerItemReader(AccountService accountService, SecurityService secService, TDConfig tdConfig) {
         this.accountService = accountService;
         this.secService = secService;
-
+        this.tdConfig = tdConfig;
     }
 
     private List<AccountEntry> collectData (List<WebElement> accountDivs) throws InterruptedException, SecurityNotFoundException {

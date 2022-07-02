@@ -2,6 +2,7 @@ package com.pasciitools.pasciifinance.restreservice;
 
 import com.pasciitools.pasciifinance.batch.Site;
 import com.pasciitools.pasciifinance.batch.tdcrawler.SharedWebDriver;
+import com.pasciitools.pasciifinance.common.configuration.TDConfig;
 import org.openqa.selenium.By;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
@@ -37,6 +38,9 @@ public class BatchRestService {
 
     @Autowired
     private Job loadEasyWebDataFromChrome;
+
+    @Autowired
+    private TDConfig tdConfig;
 
 
     @GetMapping("/excelImportBatchJob")
@@ -88,19 +92,42 @@ public class BatchRestService {
     }
 
     @GetMapping("/pullAllData")
-    public List<String> pullAllData () {
+    public ResponseEntity<String> pullAllData () {
         var results = new ArrayList<String>();
+        var failureOccurred = false;
+        var failureMessage = "";
         try {
-            results.add(scrapeEasyWeb());
+            initiateBrowserDriver();
+            loginDriver(Site.TD_EASYWEB);
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.FAILED_DEPENDENCY, e.getMessage(), e);
+            failureOccurred = true;
+            failureMessage =String.format("Login failed due to: %s", e.getMessage());
+            log.error( failureMessage, e);
+        }
+
+        try {
+            if (!failureOccurred)
+                results.add(scrapeEasyWeb());
+        } catch (Exception e) {
+            failureOccurred = true;
+            failureMessage =String.format("Failed to scraping for EasyWeb due to: %s", e.getMessage());
+            log.error( failureMessage, e);
         }
         try {
-            results.add(scrapeWebBroker());
+            if (!failureOccurred)
+                results.add(scrapeWebBroker());
         } catch (JobExecutionException e){
-            throw new ResponseStatusException(HttpStatus.FAILED_DEPENDENCY, e.getMessage(), e);
+            failureOccurred = true;
+            failureMessage =String.format("Failed to scraping for WebBroker due to: %s", e.getMessage());
+            log.error( failureMessage, e);
         }
-        return results;
+
+        SharedWebDriver.getInstance().killDriver();
+        if (failureOccurred) {
+            return ResponseEntity.internalServerError().body(failureMessage);
+        } else {
+            return ResponseEntity.ok().body("All reads successful");
+        }
     }
 
 
@@ -115,9 +142,34 @@ public class BatchRestService {
     }
 
     @GetMapping("/login-to-td")
-    public ResponseEntity<String> loginDriver (@RequestParam Site site, @RequestParam String username, @RequestParam String password) {
+    public ResponseEntity<String> loginDriver (@RequestParam Site site) {
 
-        SharedWebDriver.getInstance().loginDriver(site, username, password);
+//        SharedWebDriver.getInstance().loginDriver(site, username, password);
+        String url;
+        String successUrl;
+        String username;
+        String password;
+        switch (site) {
+            case TD_EASYWEB:
+                url = tdConfig.getEasywebUrl();
+                successUrl = tdConfig.getEasywebSuccessLoginUrl();
+                username = tdConfig.getEasywebUserName();
+                password = tdConfig.getEasywebPassword();
+                break;
+            case TD_WEBBROKER:
+                url = tdConfig.getWebbrokerUrl();
+                successUrl = tdConfig.getWebbrokerSuccessLoginUrl();
+                username = tdConfig.getWebbrokerUserName();
+                password = tdConfig.getWebbrokerPassword();
+                break;
+            default:
+                url = tdConfig.getEasywebUrl();
+                successUrl = tdConfig.getEasywebSuccessLoginUrl();
+                username = tdConfig.getEasywebUserName();
+                password = tdConfig.getEasywebPassword();
+                break;
+        }
+        SharedWebDriver.getInstance().loginDriver(username,password, url, successUrl, tdConfig.getUsernameFieldOptions().split(","));
         return ResponseEntity.ok().body("Successfully logged into " + site);
 
     }

@@ -1,8 +1,10 @@
 package com.pasciitools.pasciifinance.batch.tdcrawler;
 
 import com.pasciitools.pasciifinance.batch.Site;
+import com.pasciitools.pasciifinance.common.configuration.TDConfig;
 import com.pasciitools.pasciifinance.common.entity.AccountEntry;
 import com.pasciitools.pasciifinance.common.service.AccountService;
+import org.apache.commons.lang3.StringUtils;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.TimeoutException;
@@ -30,17 +32,15 @@ public class TDEasyWebItemReader extends TDItemReader implements ItemReader<Acco
 
 
     private final AccountService accountService;
+    private final TDConfig tdConfig;
     private final NumberFormat nfCAD = NumberFormat.getCurrencyInstance(Locale.CANADA);
     private final Logger log = LoggerFactory.getLogger(TDEasyWebItemReader.class);
-
-    private final String userName;
-    private final String password;
 
     private List<AccountEntry> entries;
     private Iterator<AccountEntry> iter;
 
-    @Value("${usernameFieldOptions}")
-    private String usernameFieldOptions;
+//    @Value("${usernameFieldOptions}")
+//    private String usernameFieldOptions;
 
 
     @Override
@@ -51,7 +51,11 @@ public class TDEasyWebItemReader extends TDItemReader implements ItemReader<Acco
             try {
                 sharedWebDriver = SharedWebDriver.getInstance();
                 driver = sharedWebDriver.getDriver();
-                sharedWebDriver.loginDriver(Site.TD_EASYWEB, userName, password);
+                if (StringUtils.isEmpty(driver.getCurrentUrl())) {
+                    sharedWebDriver.loginDriver(tdConfig.getEasywebUserName(), tdConfig.getEasywebPassword(), tdConfig.getEasywebUrl(), tdConfig.getEasywebSuccessLoginUrl(), tdConfig.getUsernameFieldOptions().split(","));
+                } else if (!tdConfig.getEasywebSuccessLoginUrl().equals(driver.getCurrentUrl())){
+                    driver.get(tdConfig.getEasywebNavigate());
+                }
                 wait = new WebDriverWait(driver, Duration.ofSeconds(10));
                 boolean redirectCompleted = wait.until(ExpectedConditions.urlToBe("https://easyweb.td.com/waw/ezw/webbanking"));
                 if (redirectCompleted){
@@ -74,12 +78,8 @@ public class TDEasyWebItemReader extends TDItemReader implements ItemReader<Acco
                 String message = "Timeout Exception during execution. Killing job.";
                 log.error(message, e);
                 throw new TimeoutException(message, e);
-            } finally {
-                if (driver != null) {
-                    SharedWebDriver.getInstance().killDriver();
-                    log.debug("Quitting browser since no longer necessary to read entries.");
-                }
-
+            } catch (Exception e) {
+                log.error("Random generic", e);
             }
         }
 
@@ -93,14 +93,9 @@ public class TDEasyWebItemReader extends TDItemReader implements ItemReader<Acco
         return nextEntry;
     }
 
-    public TDEasyWebItemReader(String userName, String password, AccountService accountService) {
-
-        this.userName = userName;
-        this.password = password;
+    public TDEasyWebItemReader(AccountService accountService, TDConfig tdConfig) {
         this.accountService = accountService;
-        if (userName == null || password == null)
-            throw new RuntimeException("Credentials not provided. Crashing execution");
-
+        this.tdConfig = tdConfig;
     }
 
     private List<AccountEntry> collectData (List<WebElement> bankingRows) throws InterruptedException {

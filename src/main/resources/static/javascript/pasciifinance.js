@@ -343,6 +343,7 @@ function fetchAllData () {
             spinnerButton.classList.remove("button--loading");
 
         } else if (Http.readyState === 4 && Http.status !== 200){
+            console.error("Failure in loading data due to: " + Http.responseText);
             spinnerButton.classList.remove("button--loading");
             spinnerButton.textContent = "X - FAIL";
         }

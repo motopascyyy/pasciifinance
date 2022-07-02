@@ -1,6 +1,7 @@
 package com.pasciitools.pasciifinance.batch.tdcrawler;
 
 import com.pasciitools.pasciifinance.batch.Site;
+import com.pasciitools.pasciifinance.common.configuration.TDConfig;
 import org.apache.commons.lang3.StringUtils;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -11,7 +12,9 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.time.Duration;
@@ -26,22 +29,24 @@ public class SharedWebDriver {
     private static final String CARET = "td-wb-dropdown-toggle__caret";
     private final Logger log = LoggerFactory.getLogger(SharedWebDriver.class);
 
-    @Value("${usernameFieldOptions}")
-    private String usernameFieldOptions;
-
-    @Value("${easyweb.userName}")
-    private String ewUserName;
-    @Value("${easyweb.password}")
-    private String ewPassword;
-    @Value("${easyweb.url}")
-    private String easyWebUrl;
-
-    @Value("${webbroker.userName}")
-    private String wbUserName;
-    @Value("${webbroker.password}")
-    private String wbPassword;
-    @Value("${webbroker.url}")
-    private String webBrokerUrl;
+//    @Autowired
+//    private TDConfig tdConfig;
+//    @Value("${usernameFieldOptions}")
+//    private String usernameFieldOptions;
+//
+//    @Value("${easyweb.userName}")
+//    private String ewUserName;
+//    @Value("${easyweb.password}")
+//    private String ewPassword;
+//    @Value("${easyweb.url}")
+//    private String easyWebUrl;
+//
+//    @Value("${webbroker.userName}")
+//    private String wbUserName;
+//    @Value("${webbroker.password}")
+//    private String wbPassword;
+//    @Value("${webbroker.url}")
+//    private String webBrokerUrl;
     private WebDriverWait wait;
 
     public WebDriver getDriver() {
@@ -90,27 +95,27 @@ public class SharedWebDriver {
             log.debug("Call to quit the Shared Web Driver but either the Singleton instance of SharedWebDriver or the underlying WebDriver were null. Nothing happened.");
     }
 
-    public boolean loginDriver (Site siteEnum, String userName, String password) {
+    public boolean loginDriver (String userName, String password, String url, String successUrl, String [] fieldOptionsStrings) {
 
-        String url;
         ExpectedCondition<Boolean> successfulCondition;
-        switch (siteEnum) {
-            case TD_EASYWEB:
-                url = easyWebUrl;
-                successfulCondition = ExpectedConditions.urlToBe("https://easyweb.td.com/waw/ezw/webbanking");
-                break;
-            case TD_WEBBROKER:
-                url = webBrokerUrl;
-                successfulCondition = ExpectedConditions.urlContains("https://webbroker.td.com/waw/brk/wb/wbr/static/main/index.html");
-                break;
-            default:
-                url = easyWebUrl;
-                successfulCondition = ExpectedConditions.urlToBe("https://easyweb.td.com/waw/ezw/webbanking");
-                break;
-        }
+//        switch (siteEnum) {
+//            case TD_EASYWEB:
+//                url = tdConfig.getEasywebUrl();
+//                successfulCondition = ExpectedConditions.urlToBe("https://easyweb.td.com/waw/ezw/webbanking");
+//                break;
+//            case TD_WEBBROKER:
+//                url = tdConfig.getWebbrokerUrl();
+//                successfulCondition = ExpectedConditions.urlContains("https://webbroker.td.com/waw/brk/wb/wbr/static/main/index.html");
+//                break;
+//            default:
+//                url = tdConfig.getEasywebUrl();
+//                successfulCondition = ExpectedConditions.urlToBe("https://easyweb.td.com/waw/ezw/webbanking");
+//                break;
+//        }
+        successfulCondition = ExpectedConditions.urlContains(successUrl);
         driver = getDriver(); //this is to ensure the driver inside the shared instance hasn't been set to null or anything.
         driver.get(url);
-        var usernameField = getUserNameField();
+        var usernameField = getUserNameField(fieldOptionsStrings);
         WebElement passwordField = driver.findElement(By.id("uapPassword"));
         usernameField.sendKeys(userName);
         passwordField.sendKeys(password);
@@ -135,10 +140,10 @@ public class SharedWebDriver {
         }
     }
 
-    public WebElement getUserNameField () {
+    public WebElement getUserNameField (String [] fieldOptionsStrings) {
         WebElement field = null;
 
-        var fieldOptionsStrings = usernameFieldOptions.split(",");
+//        var fieldOptionsStrings = tdConfig.getUsernameFieldOptions().split(",");
         for (String option : fieldOptionsStrings) {
             var by = By.id(option);
             if (!driver.findElements(by).isEmpty()) {
